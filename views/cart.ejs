@@ -1,0 +1,303 @@
+<%- include('partials/header', { user: (typeof user !== 'undefined' ? user : null), title: 'Cart' }) %>
+
+  <!-- Cart Content -->
+  <div class="container mt-4 mb-5">
+    <h2>Shopping Cart</h2>
+
+    <% const cartErrors = (typeof errors !== 'undefined' && Array.isArray(errors)) ? errors : []; %>
+    <% const cartSuccess = (typeof success !== 'undefined' && Array.isArray(success)) ? success : []; %>
+    <% if (cartErrors.length) { %>
+      <div class="alert alert-danger"><%= cartErrors.join('<br>') %></div>
+    <% } %>
+    <% if (cartSuccess.length) { %>
+      <div class="alert alert-success"><%= cartSuccess.join('<br>') %></div>
+    <% } %>
+
+    <% if (!cart || cart.length === 0) { %>
+      <p>Your cart is empty.</p>
+      <a href="/shopping" class="btn btn-primary">Back to Shopping</a>
+    <% } else { %>
+      <form id="cartCheckoutForm" action="/cart/selection" method="POST">
+        <table id="cartTable" class="table table-bordered">
+          <thead>
+            <tr>
+              <th style="width: 40px;">
+                <input type="checkbox" id="selectAll">
+              </th>
+              <th>Product</th>
+              <th>Price</th>
+              <th>Quantity</th>
+              <th>Total</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% let total = 0; %>
+            <% for (let i = 0; i < cart.length; i++) {
+                 const item = cart[i];
+                 const pid = item.productId;
+                 const line = Number(item.price || 0) * Number(item.quantity || 0);
+            %>
+              <tr data-pid="<%= pid %>">
+                <td>
+                  <input type="checkbox" name="selected" value="<%= pid %>" class="item-checkbox">
+                </td>
+                <td>
+                  <%= item.productName %> (ID: <%= pid %>)
+                  <% if (item.image) { %>
+                    <br>
+                    <img src="/images/<%= item.image %>" alt="product image" style="max-width: 80px; height: auto;">
+                  <% } %>
+                </td>
+                <td>$<%= Number(item.price || 0).toFixed(2) %></td>
+                <td>
+                  <input type="number" name="quantity" min="0" value="<%= item.quantity %>" class="form-control cart-qty-input" style="width: 80px; display: inline-block;" data-pid="<%= pid %>" />
+                  <button type="button" class="btn btn-sm btn-outline-primary cart-update-btn" data-pid="<%= pid %>">Update</button>
+                </td>
+                <td class="line-amount">$<%= line.toFixed(2) %></td>
+                <td>
+                  <button type="button" class="btn btn-danger delete-btn"
+                    data-pid="<%= pid %>"
+                    data-pname="<%= (item.productName || '').replace(/\"/g, '&quot;') %>"
+                    data-line="<%= line.toFixed(2) %>">
+                    Delete
+                  </button>
+                </td>
+              </tr>
+              <% total += line; %>
+            <% } %>
+          </tbody>
+        </table>
+      </form>
+
+      <h4>Total: $<%= total.toFixed(2) %></h4>
+
+      <form id="clearCartForm" action="/cart/clear" method="POST" style="display:inline;">
+        <button type="submit" class="btn btn-warning">Clear Cart</button>
+      </form>
+
+      <a href="/shopping" class="btn btn-secondary">Back to Shopping</a>
+      <button id="proceedSelectedBtn" type="button" class="btn btn-primary">Proceed with selected</button>
+    <% } %>
+  </div>
+
+  <!-- Delete confirmation modal (no form submit) -->
+  <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Confirm delete</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p id="modalBodyText">Are you sure you want to remove this item from your cart?</p>
+        </div>
+        <div class="modal-footer">
+          <button id="cancelDeleteBtn" type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button id="confirmDeleteBtn" type="button" class="btn btn-danger">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080">
+    <div id="toastContainer"></div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // helper: show bootstrap toast
+  function showToast(message, title, variant) {
+    const container = document.getElementById('toastContainer');
+    if (!container) return; // fail-safe
+    const id = 't' + Date.now();
+    const toastHtml = `
+      <div id="${id}" class="toast align-items-center text-bg-${variant || 'primary'} border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+          <div class="toast-body">
+            ${message}
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+      </div>`;
+    container.insertAdjacentHTML('beforeend', toastHtml);
+    const el = document.getElementById(id);
+    const bs = new bootstrap.Toast(el, { delay: 3000 });
+    bs.show();
+    el.addEventListener('hidden.bs.toast', () => el.remove());
+  }
+
+  let deleteModal = null;
+  let deleteTargetPid = null;
+  let deleteTargetLine = 0;
+
+  function openConfirmModal(productId, productName, lineAmount) {
+    deleteTargetPid = String(productId);
+    deleteTargetLine = Number(lineAmount || 0);
+    document.getElementById('modalBodyText').textContent =
+      'Are you sure you want to remove "' + productName + '" from your cart?';
+    if (!deleteModal) {
+      deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+      document.getElementById('confirmDeleteBtn').addEventListener('click', doDelete);
+    }
+    deleteModal.show();
+  }
+
+  async function doDelete() {
+    if (!deleteTargetPid) return;
+    try {
+      const resp = await fetch('/cart/delete/' + encodeURIComponent(deleteTargetPid), {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        credentials: 'same-origin'
+      });
+      console.log('DEBUG delete response status=', resp.status);
+      const data = await resp.json();
+      console.log('DEBUG delete response body=', data);
+      if (data && data.success) {
+        // remove row from DOM
+        const row = document.querySelector('tr[data-pid="' + CSS.escape(deleteTargetPid) + '"]');
+        if (row) row.remove();
+
+        // update total shown
+        const totalEl = document.getElementById('cartTotalText'); // summary total text
+        if (totalEl) {
+          const curr = parseFloat((totalEl.textContent || '').replace(/[^0-9.-]+/g,"")) || 0;
+          const next = Math.max(0, curr - deleteTargetLine);
+          totalEl.textContent = '$' + next.toFixed(2);
+        }
+
+        // if cart empty, hide table and show message
+        const tbody = document.querySelector('#cartTable tbody');
+        if (!tbody || tbody.children.length === 0) {
+          const container = document.querySelector('.container');
+          const table = document.getElementById('cartTable');
+          if (table) table.remove();
+          // show simple message
+          const p = document.createElement('p');
+          p.textContent = 'Your cart is empty.';
+          container.appendChild(p);
+        }
+      } else {
+        console.error('Delete failed', data);
+        showToast('Could not remove item. Try again.', 'Error', 'danger');
+      }
+    } catch (err) {
+      console.error('Delete request failed', err);
+      showToast('Network error. Try again.', 'Error', 'danger');
+    } finally {
+      if (deleteModal) deleteModal.hide();
+      deleteTargetPid = null;
+      deleteTargetLine = 0;
+    }
+  }
+
+  // Wire up delete buttons (use data- attributes to avoid inline JS in template)
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('.delete-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        const pid = btn.dataset.pid;
+        const pname = btn.dataset.pname || '';
+        const line = btn.dataset.line || '0';
+        openConfirmModal(pid, pname, line);
+      });
+    });
+
+    // Select-all behaviour for cart checkboxes
+    const selectAll = document.getElementById('selectAll');
+    const itemCheckboxes = Array.from(document.querySelectorAll('.item-checkbox'));
+    if (selectAll && itemCheckboxes.length) {
+      selectAll.addEventListener('change', function(){
+        itemCheckboxes.forEach(cb => { cb.checked = selectAll.checked; });
+      });
+      itemCheckboxes.forEach(cb => {
+        cb.addEventListener('change', function(){
+          if (!cb.checked) selectAll.checked = false;
+          else if (itemCheckboxes.every(x => x.checked)) selectAll.checked = true;
+        });
+      });
+    }
+
+    // Proceed with selected items
+    const proceedBtn = document.getElementById('proceedSelectedBtn');
+    const form = document.getElementById('cartCheckoutForm');
+    if (proceedBtn && form) {
+      proceedBtn.addEventListener('click', function(){
+        const checked = form.querySelectorAll('.item-checkbox:checked');
+        if (!checked.length) {
+          showToast('Please select item(s) to check out.', 'Error', 'danger');
+          return;
+        }
+        form.submit();
+      });
+    }
+
+    // Quantity update via AJAX
+    document.querySelectorAll('.cart-update-btn').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        const pid = btn.dataset.pid;
+        const input = document.querySelector('.cart-qty-input[data-pid="' + CSS.escape(pid) + '"]');
+        if (!input) return;
+        const qty = input.value;
+        try {
+          const resp = await fetch('/cart/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ productId: pid, quantity: qty })
+          });
+          const data = await resp.json();
+          if (!data || !data.success) {
+            showToast((data && data.message) || 'Could not update cart.', 'Error', 'danger');
+            return;
+          }
+
+          const row = document.querySelector('tr[data-pid="' + CSS.escape(pid) + '"]');
+          if (data.removed) {
+            // item removed from cart
+            if (row) row.remove();
+          } else if (data.item) {
+            // update row quantity and line total
+            if (input) input.value = data.item.quantity;
+            const lineCell = row ? row.querySelector('.line-amount') : null;
+            if (lineCell) {
+              const line = Number(data.item.price || 0) * Number(data.item.quantity || 0);
+              lineCell.textContent = '$' + line.toFixed(2);
+            }
+          }
+
+          // recalc overall total
+          const totalEl = document.getElementById('cartTotalText');
+          if (totalEl) {
+            let total = 0;
+            document.querySelectorAll('#cartTable tbody tr').forEach(function(r) {
+              const cell = r.querySelector('.line-amount');
+              if (!cell) return;
+              const val = parseFloat((cell.textContent || '').replace(/[^0-9.-]+/g, '')) || 0;
+              total += val;
+            });
+            totalEl.textContent = 'Total: $' + total.toFixed(2);
+          }
+
+          // if cart empty, show empty message
+          const tbody = document.querySelector('#cartTable tbody');
+          if (!tbody || !tbody.children.length) {
+            const container = document.querySelector('.container');
+            const table = document.getElementById('cartTable');
+            if (table) table.remove();
+            const p = document.createElement('p');
+            p.textContent = 'Your cart is empty.';
+            container.appendChild(p);
+          }
+
+          showToast(data.removed ? 'Item removed from cart.' : 'Cart updated.', 'Success', 'success');
+        } catch (err) {
+          console.error('Update quantity failed', err);
+          showToast('Network error while updating cart.', 'Error', 'danger');
+        }
+      });
+    });
+  });
+</script>
+<%- include('partials/footer') %>

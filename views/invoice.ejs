@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Invoice #<%= order.id %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f5f7fb; }
+    .invoice-wrapper { max-width: 900px; margin: 30px auto; background: #fff; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12); border-radius: 12px; }
+    .invoice-header { border-bottom: 1px solid #e5e7eb; padding: 24px 32px; display: flex; justify-content: space-between; align-items: center; }
+    .brand-title { font-weight: 700; font-size: 1.4rem; letter-spacing: .04em; text-transform: uppercase; color: #1f2937; }
+    .brand-sub { font-size: .85rem; color: #6b7280; }
+    .invoice-body { padding: 24px 32px 16px; }
+    .invoice-footer { padding: 16px 32px 24px; border-top: 1px solid #e5e7eb; font-size: .85rem; color: #6b7280; }
+    .text-muted-xs { font-size: .8rem; color: #9ca3af; }
+    .table-sm th, .table-sm td { padding-top: .45rem; padding-bottom: .45rem; }
+    @media print {
+      body { background: #fff; }
+      .invoice-wrapper { box-shadow: none; margin: 0; border-radius: 0; }
+      .btn-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="invoice-wrapper">
+    <div class="invoice-header">
+      <div>
+        <div class="brand-title">SupermarketApp</div>
+        <div class="brand-sub">Order invoice and payment confirmation</div>
+      </div>
+      <div class="text-end">
+        <div class="fw-semibold">Invoice #<%= order.id %></div>
+        <div class="text-muted-xs">Issued: <%= new Date().toLocaleString('en-SG',{dateStyle:'medium', timeStyle:'short'}) %></div>
+        <div class="text-muted-xs">Order date: <%= new Date(order.createdAt).toLocaleString('en-SG',{dateStyle:'medium', timeStyle:'short'}) %></div>
+      </div>
+    </div>
+
+    <div class="invoice-body">
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <h6 class="text-uppercase text-muted-xs mb-1">Billed to</h6>
+          <div class="fw-semibold"><%= (order.delivery && order.delivery.fullName) || (user && user.username) || 'Customer' %></div>
+          <% if (order.delivery) { %>
+            <div class="text-muted-xs">
+              <%= order.delivery.street %><% if (order.delivery.unit) { %>, #<%= order.delivery.unit %><% } %><br>
+              <%= order.delivery.postalCode %>
+            </div>
+          <% } %>
+        </div>
+        <div class="col-md-6 text-md-end mt-3 mt-md-0">
+          <h6 class="text-uppercase text-muted-xs mb-1">Order details</h6>
+          <div class="text-muted-xs">Order #<%= order.id %></div>
+          <div class="text-muted-xs">Payment method: <%= order.paymentMethod || 'Card' %></div>
+          <div class="text-muted-xs">Delivery option: <%= order.deliveryOption || 'Normal (3 business days)' %></div>
+          <% if (order.estimatedDelivery) { %>
+            <div class="text-muted-xs">Estimated delivery: <%= new Date(order.estimatedDelivery).toLocaleDateString('en-SG',{dateStyle:'medium'}) %></div>
+          <% } %>
+        </div>
+      </div>
+
+      <h6 class="mb-2">Order items</h6>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Item</th>
+              <th class="text-center" style="width: 80px;">Qty</th>
+              <th class="text-end" style="width: 120px;">Unit price</th>
+              <th class="text-end" style="width: 120px;">Line total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% (order.items || []).forEach(function(item){ %>
+              <tr>
+                <td><%= item.productName %></td>
+                <td class="text-center"><%= item.quantity %></td>
+                <td class="text-end">$<%= Number(item.price).toFixed(2) %></td>
+                <td class="text-end">$<%= (Number(item.price) * Number(item.quantity)).toFixed(2) %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="row mt-3">
+        <div class="col-md-6">
+          <% if (order.note || (order.delivery && order.delivery.note)) { %>
+            <h6 class="mb-1">Notes</h6>
+            <p class="text-muted-xs mb-0"><%= order.note || (order.delivery && order.delivery.note) %></p>
+          <% } %>
+        </div>
+        <div class="col-md-6">
+          <div class="card border-0 bg-light">
+            <div class="card-body py-2">
+              <div class="d-flex justify-content-between mb-1 text-muted-xs">
+                <span>Items subtotal</span>
+                <span>$<%= Number(order.subtotal || 0).toFixed(2) %></span>
+              </div>
+              <div class="d-flex justify-content-between mb-1 text-muted-xs">
+                <span>Delivery fee</span>
+                <span>$<%= Number(order.deliveryCost || 0).toFixed(2) %></span>
+              </div>
+              <hr class="my-2">
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">Total paid</span>
+                <span class="fw-bold fs-5">$<%= Number(order.total || (order.subtotal + order.deliveryCost)).toFixed(2) %></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="invoice-footer d-flex justify-content-between align-items-center">
+      <div>
+        Thank you for shopping with <strong>SupermarketApp</strong>.
+        <span class="d-block text-muted-xs">This is a computer-generated invoice. No signature is required.</span>
+      </div>
+      <div class="btn-print d-flex gap-2">
+        <a href="/orders" class="btn btn-sm btn-outline-secondary">Back to orders</a>
+        <button class="btn btn-sm btn-outline-primary" onclick="window.print()">Print</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

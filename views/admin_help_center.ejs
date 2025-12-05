@@ -1,0 +1,142 @@
+<%- include('partials/header', { user: (typeof user !== 'undefined' ? user : null), title: 'Help Center Requests' }) %>
+
+<div class="container mt-4 mb-5">
+  <h2 class="mb-3">Help Center Requests</h2>
+  <p class="text-muted mb-4">Review address change and refund requests from customers.</p>
+
+  <% if (typeof errors !== 'undefined' && errors.length) { %>
+    <div class="alert alert-danger">
+      <ul class="mb-0">
+        <% errors.forEach(function(e){ %>
+          <li><%= e %></li>
+        <% }) %>
+      </ul>
+    </div>
+  <% } %>
+  <% if (typeof success !== 'undefined' && success.length) { %>
+    <div class="alert alert-success">
+      <ul class="mb-0">
+        <% success.forEach(function(m){ %>
+          <li><%= m %></li>
+        <% }) %>
+      </ul>
+    </div>
+  <% } %>
+
+  <h4 class="mt-3 mb-2">Refund requests</h4>
+  <div class="table-responsive mb-4">
+    <table class="table table-sm table-striped align-middle">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Order</th>
+          <th>User</th>
+          <th>Submitted</th>
+          <th>Reason</th>
+          <th>Status</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!refunds || !refunds.length) { %>
+          <tr><td colspan="7" class="text-center text-muted">No refund requests yet.</td></tr>
+        <% } else { %>
+          <% refunds.forEach(function(r){ %>
+            <tr>
+              <td>#<%= r.id %></td>
+              <td>#<%= r.orderId %></td>
+              <td><%= r.username || ('User ' + (r.userId || '')) %></td>
+              <td><%= new Date(r.createdAt).toLocaleString('en-SG',{dateStyle:'short', timeStyle:'short'}) %></td>
+              <td style="max-width:260px;"><%= r.reason %></td>
+              <td>
+                <% if (r.status === 'approved') { %>
+                  <span class="badge bg-success"><%= r.refundStatus || 'Refund accepted' %></span>
+                <% } else if (r.status === 'rejected') { %>
+                  <span class="badge bg-danger"><%= r.refundStatus || 'Refund rejected' %></span>
+                <% } else if (r.status === 'processing') { %>
+                  <span class="badge bg-warning text-dark"><%= r.refundStatus || 'Processing refund' %></span>
+                <% } else if (r.status === 'completed') { %>
+                  <span class="badge bg-success"><%= r.refundStatus || 'Refund completed' %></span>
+                <% } else { %>
+                  <span class="badge bg-warning text-dark">Pending</span>
+                <% } %>
+              </td>
+              <td class="text-end">
+                <% if (r.status === 'pending') { %>
+                  <form action="/admin/help-center/refund/<%= r.id %>/decision" method="POST" class="d-inline">
+                    <input type="hidden" name="decision" value="approve">
+                    <button class="btn btn-sm btn-success" type="submit">Accept</button>
+                  </form>
+                  <form action="/admin/help-center/refund/<%= r.id %>/decision" method="POST" class="d-inline ms-1">
+                    <input type="hidden" name="decision" value="reject">
+                    <button class="btn btn-sm btn-outline-danger" type="submit">Decline</button>
+                  </form>
+                <% } else { %>
+                  <span class="text-muted small">No actions</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <h4 class="mt-4 mb-2">Address change requests</h4>
+  <div class="table-responsive mb-4">
+    <table class="table table-sm table-striped align-middle">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Order</th>
+          <th>User</th>
+          <th>Submitted</th>
+          <th>New address</th>
+          <th>Reason</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!addressChanges || !addressChanges.length) { %>
+          <tr><td colspan="7" class="text-center text-muted">No address change requests.</td></tr>
+        <% } else { %>
+          <% addressChanges.forEach(function(r){ %>
+            <tr>
+              <td>#<%= r.id %></td>
+              <td>#<%= r.orderId %></td>
+              <td><%= r.username || ('User ' + (r.userId || '')) %></td>
+              <td><%= new Date(r.createdAt).toLocaleString('en-SG',{dateStyle:'short', timeStyle:'short'}) %></td>
+              <td style="max-width:260px;"><%= r.newAddress %></td>
+              <td style="max-width:260px;"><%= r.reason || '-' %></td>
+              <td>
+                <% if (r.status === 'approved') { %>
+                  <span class="badge bg-success">Approved</span>
+                <% } else if (r.status === 'rejected') { %>
+                  <span class="badge bg-danger">Rejected</span>
+                <% } else { %>
+                  <span class="badge bg-secondary">Submitted</span>
+                <% } %>
+              </td>
+              <td class="text-end">
+                <% if (r.status === 'submitted') { %>
+                  <form action="/admin/help-center/address-change/<%= r.id %>/decision" method="POST" class="d-inline">
+                    <input type="hidden" name="decision" value="approve">
+                    <button class="btn btn-sm btn-success" type="submit">Accept</button>
+                  </form>
+                  <form action="/admin/help-center/address-change/<%= r.id %>/decision" method="POST" class="d-inline ms-1">
+                    <input type="hidden" name="decision" value="reject">
+                    <button class="btn btn-sm btn-outline-danger" type="submit">Decline</button>
+                  </form>
+                <% } else { %>
+                  <span class="text-muted small">No actions</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,146 @@
+<%- include('partials/header', { user: (typeof user !== 'undefined' ? user : null), title: 'Order Details' }) %>
+
+<div class="container mt-4 mb-5 order-detail-wrapper">
+  <div class="row g-4">
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+            <div>
+              <h4 class="mb-1">Order #<%= order.id %></h4>
+              <p class="text-muted small mb-0">Placed <%= new Date(order.createdAt).toLocaleString() %></p>
+            </div>
+            <div class="text-end">
+              <div class="badge bg-light text-secondary border small mb-1">Payment: <%= order.paymentMethod || 'card' %></div>
+              <div>
+                <span class="badge bg-success-subtle text-success border small">
+                  <%= (order.deliveryStatus || order.status || 'processing').charAt(0).toUpperCase() + (order.deliveryStatus || order.status || 'processing').slice(1) %>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Order progress timeline -->
+          <% const status = (order.deliveryStatus || order.status || 'processing'); %>
+          <% const normalizedStatus = status.toLowerCase(); %>
+          <div class="order-progress mt-3">
+            <div class="order-progress-step <%= ['processing','preparing','packed','out for delivery','out_for_delivery'].includes(normalizedStatus) || ['shipped','delivered','completed'].includes(normalizedStatus) ? 'is-complete' : 'is-current' %>">
+              <div class="dot"></div>
+              <div class="label">Placed</div>
+            </div>
+            <div class="order-progress-step <%= ['preparing','packed','out for delivery','out_for_delivery','shipped','delivered','completed'].includes(normalizedStatus) ? (['shipped','delivered','completed'].includes(normalizedStatus) ? 'is-complete' : 'is-current') : '' %>">
+              <div class="dot"></div>
+              <div class="label">Preparing</div>
+            </div>
+            <div class="order-progress-step <%= ['out for delivery','out_for_delivery','shipped','delivered','completed'].includes(normalizedStatus) ? (['delivered','completed'].includes(normalizedStatus) ? 'is-complete' : 'is-current') : '' %>">
+              <div class="dot"></div>
+              <div class="label">Out for delivery</div>
+            </div>
+            <div class="order-progress-step <%= ['delivered','completed'].includes(normalizedStatus) ? 'is-current is-complete' : '' %>">
+              <div class="dot"></div>
+              <div class="label">Delivered</div>
+            </div>
+          </div>
+
+          <div class="d-flex flex-wrap justify-content-between gap-3 mt-3">
+            <div>
+              <div class="text-muted small">Delivery option</div>
+              <div class="fw-semibold text-capitalize"><%= order.deliveryOption || 'normal' %></div>
+            </div>
+            <div>
+              <div class="text-muted small">Estimated delivery</div>
+              <div class="fw-semibold"><%= new Date(order.estimatedDelivery || new Date().toISOString()).toLocaleString() %></div>
+            </div>
+            <% if (order.refundStatus) { %>
+              <div>
+                <div class="text-muted small">Refund status</div>
+                <div class="fw-semibold text-danger"><%= order.refundStatus %></div>
+              </div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title mb-3">Items in this order</h5>
+          <ul class="list-group list-group-flush mb-0">
+            <% (order.items || []).forEach(function(item){ %>
+              <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="fw-semibold"><%= item.productName %></div>
+                  <div class="text-muted small">Qty: <%= item.quantity %> &middot; $<%= Number(item.price).toFixed(2) %></div>
+                </div>
+                <div class="fw-semibold">$<%= (Number(item.price) * Number(item.quantity)).toFixed(2) %></div>
+              </li>
+            <% }) %>
+          </ul>
+        </div>
+      </div>
+
+      <% if (order.history && order.history.length) { %>
+        <div class="card border-0 shadow-sm mt-3">
+          <div class="card-body">
+            <h6 class="card-title mb-2">Status history</h6>
+            <ul class="list-group list-group-flush mb-0">
+              <% order.history.forEach(function(h){ %>
+                <li class="list-group-item px-0 d-flex justify-content-between small">
+                  <span><%= h.status %></span>
+                  <span class="text-muted"><%= new Date(h.at).toLocaleString() %></span>
+                </li>
+              <% }) %>
+            </ul>
+          </div>
+        </div>
+      <% } %>
+
+      <div class="mt-3">
+        <a href="/orders" class="btn btn-outline-secondary me-2">Back to orders</a>
+        <a href="/orders/<%= order.id %>/invoice" class="btn btn-outline-primary me-2" target="_blank">Print invoice</a>
+        <% const showRefundButton = !order.refundStatus && (order.deliveryStatus || order.status || '').toLowerCase().includes('delivered'); %>
+        <% if (showRefundButton) { %>
+          <a href="/orders/<%= order.id %>/refund" class="btn btn-outline-danger">Request refund</a>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+          <h6 class="text-uppercase small text-muted mb-2">Order summary</h6>
+          <div class="d-flex justify-content-between mb-1 small text-muted">
+            <span>Items subtotal</span>
+            <span>$<%= Number(order.subtotal || 0).toFixed(2) %></span>
+          </div>
+          <div class="d-flex justify-content-between mb-2 small text-muted">
+            <span>Delivery fee</span>
+            <span>$<%= Number(order.deliveryCost || 0).toFixed(2) %></span>
+          </div>
+          <hr class="my-2">
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">Total paid</span>
+            <span class="fw-bold text-success">$<%= Number(order.total || (order.subtotal + order.deliveryCost)).toFixed(2) %></span>
+          </div>
+        </div>
+      </div>
+
+      <% if (order.delivery) { %>
+        <div class="card border-0 shadow-sm">
+          <div class="card-body">
+            <h6 class="text-uppercase small text-muted mb-2">Delivery details</h6>
+            <p class="mb-1 fw-semibold"><%= order.delivery.fullName %></p>
+            <p class="mb-1 small">
+              <%= order.delivery.street %><% if (order.delivery.unit) { %>, #<%= order.delivery.unit %><% } %><br>
+              <%= order.delivery.postalCode %>
+            </p>
+            <% if (order.delivery.note) { %>
+              <p class="mb-0 small text-muted">Note: <%= order.delivery.note %></p>
+            <% } %>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

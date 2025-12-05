@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <title>Supermarket App - Update Product</title>
+</head>
+<%- include('partials/header', { user: (typeof user !== 'undefined' ? user : null), title: 'Update Product' }) %>
+
+  <div class="container mt-4">
+    <h2 class="text-center mb-4">Update Product</h2>
+
+    <% if (typeof product !== 'undefined' && product) { %>
+      <form action="/updateProduct/<%= product.id %>" method="POST" enctype="multipart/form-data" class="mx-auto" style="max-width:720px;">
+
+        <div class="mb-3">
+          <label for="name" class="form-label">Product Name</label>
+          <input type="text" class="form-control" id="name" name="name" required value="<%= product.productName %>">
+        </div>
+
+        <div class="mb-3">
+          <label for="quantity" class="form-label">Quantity</label>
+          <input type="number" class="form-control" id="quantity" name="quantity" min="0" step="1" value="<%= product.quantity %>" required>
+        </div>
+
+        <div class="mb-3">
+          <label for="price" class="form-label">Price</label>
+          <input type="number" class="form-control" id="price" name="price" min="0" step="0.01" value="<%= product.price %>" required>
+        </div>
+
+        <div class="mb-3">
+          <label for="category" class="form-label">Category</label>
+          <select name="category" id="category" class="form-select">
+            <option value="">-- Select category --</option>
+            <% (typeof categories !== 'undefined' ? categories : []).forEach(function(c){ %>
+              <option value="<%= c %>" <% if (product.category === c) { %> selected <% } %>><%= c %></option>
+            <% }) %>
+          </select>
+          <small class="form-text text-muted">Or enter a new category below:</small>
+          <input type="text" name="newCategory" class="form-control mt-2" placeholder="New category (e.g. Fruits)">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Current Image</label>
+          <input type="text" class="form-control" name="currentImage" value="<%= product.image %>" readonly>
+          <% if (product.image) { %>
+            <img src="/images/<%= product.image %>" class="img-thumbnail mt-2" style="width: 150px;">
+          <% } %>
+        </div>
+
+        <div class="mb-4">
+          <label for="image" class="form-label">Upload New Image</label>
+          <input class="form-control" type="file" id="image" name="image" accept="image/*">
+        </div>
+
+        <div class="d-grid gap-2">
+          <button type="submit" class="btn btn-primary">Update Product</button>
+          <a href="/inventory" class="btn btn-secondary">Back to Inventory</a>
+        </div>
+      </form>
+    <% } else { %>
+      <p class="text-center">No product found.</p>
+    <% } %>
+  </div>
+
+<%- include('partials/footer') %>

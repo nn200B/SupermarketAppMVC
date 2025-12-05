@@ -1,0 +1,136 @@
+{
+  "categories": [
+    {
+      "id": 1,
+      "name": "Fruits"
+    },
+    {
+      "id": 2,
+      "name": "Vegetables"
+    },
+    {
+      "id": 3,
+      "name": "Dairy"
+    },
+    {
+      "id": 4,
+      "name": "Bakery"
+    }
+  ],
+  "products": [
+    {
+      "id": 1,
+      "productName": "Apples",
+      "quantity": 50,
+      "price": 1.5,
+      "image": "apples.png",
+      "category": "Fruits"
+    },
+    {
+      "id": 2,
+      "productName": "Bananas",
+      "quantity": 75,
+      "price": 0.8,
+      "image": "bananas.png",
+      "category": "Fruits"
+    },
+    {
+      "id": 3,
+      "productName": "Milk",
+      "quantity": 50,
+      "price": 3.5,
+      "image": "milk.png",
+      "category": "Dairy"
+    },
+    {
+      "id": 4,
+      "productName": "Bread",
+      "quantity": 80,
+      "price": 1.8,
+      "image": "bread.png",
+      "category": "Bakery"
+    },
+    {
+      "id": 14,
+      "productName": "Tomatoes",
+      "quantity": 80,
+      "price": 1.5,
+      "image": "tomatoes.png",
+      "category": "Vegetables"
+    },
+    {
+      "id": 19,
+      "productName": "Broccoli",
+      "quantity": 100,
+      "price": 5,
+      "image": "Broccoli.png",
+      "category": "Vegetables"
+    }
+  ],
+  "nextProductId": 100,
+  "nextCategoryId": 5,
+  "orders": [
+    {
+      "userId": 2,
+      "items": [
+        {
+          "productId": 2,
+          "productName": "Bananas",
+          "price": "0.80",
+          "quantity": 5,
+          "image": "bananas.png"
+        }
+      ],
+      "subtotal": 4,
+      "deliveryOption": "normal",
+      "deliveryCost": 10,
+      "total": 14,
+      "paymentMethod": "card",
+      "delivery": {
+        "fullName": "def",
+        "street": "sdsdafs",
+        "unit": "sdsfd",
+        "postalCode": "sdfd",
+        "note": "sadsf"
+      },
+      "status": "paid",
+      "paymentDetails": {
+        "method": "card",
+        "holder": "",
+        "last4": "",
+        "cvv": ""
+      },
+      "deliveryStatus": "processing",
+      "id": 1,
+      "createdAt": "2025-12-02T04:58:05.977Z"
+    }
+  ],
+  "nextOrderId": 2,
+  "notifications": [
+    {
+      "id": 1,
+      "userId": null,
+      "role": "admin",
+      "type": "order",
+      "message": "New paid order #1 from Mary Tan.",
+      "link": "/admin/orders",
+      "createdAt": "2025-12-02T04:58:05.986Z",
+      "read": false
+    },
+    {
+      "id": 2,
+      "userId": 2,
+      "role": "user",
+      "type": "order",
+      "message": "Your order #1 has been placed successfully.",
+      "link": "/orders/1",
+      "createdAt": "2025-12-02T04:58:05.987Z",
+      "read": false
+    }
+  ],
+  "nextNotificationId": 3,
+  "refundRequests": [],
+  "nextRefundId": 1,
+  "addressChangeRequests": [],
+  "nextAddressChangeId": 1
+}

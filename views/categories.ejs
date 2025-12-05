@@ -1,0 +1,66 @@
+<%- include('partials/header', { user: (typeof user !== 'undefined' ? user : null), title: 'Categories' }) %>
+
+<div class="container mt-4">
+  <h2 class="mb-4">Admin Categories Overview</h2>
+
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <form action="/admin/categories" method="POST" class="mb-3" style="max-width:480px">
+        <div class="input-group">
+          <input name="name" class="form-control" placeholder="New category name" required>
+          <button class="btn btn-primary" type="submit">Add Category</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <% if (Array.isArray(groupedCategories) && groupedCategories.length > 0) { %>
+    <% groupedCategories.forEach(function(group){ %>
+      <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <div>
+            <strong><%= group.category.name %></strong>
+            <span class="badge bg-secondary ms-2"><%= (group.products || []).length %> product(s)</span>
+          </div>
+          <form action="/admin/categories/<%= group.category.id %>/delete" method="POST" onsubmit="return confirm('Delete this category? This will not remove products but they will appear uncategorised.');">
+            <button class="btn btn-sm btn-outline-danger">Delete Category</button>
+          </form>
+        </div>
+        <div class="card-body p-0">
+          <% if ((group.products || []).length === 0) { %>
+            <p class="m-3 text-muted small">No products assigned to this category yet.</p>
+          <% } else { %>
+            <div class="table-responsive">
+              <table class="table table-sm mb-0">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th class="text-end">Price</th>
+                    <th class="text-end">Stock</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% group.products.forEach(function(p){ %>
+                    <tr>
+                      <td><%= p.productName %></td>
+                      <td class="text-end">$<%= Number(p.price).toFixed(2) %></td>
+                      <td class="text-end"><%= p.quantity %></td>
+                      <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary" href="/updateProduct/<%= p.id %>">Edit</a>
+                      </td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          <% } %>
+        </div>
+      </div>
+    <% }) %>
+  <% } else { %>
+    <p class="text-muted">No categories found yet.</p>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

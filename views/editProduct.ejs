@@ -1,0 +1,59 @@
+<%- include('partials/header', { user: (typeof user !== 'undefined' ? user : null), title: 'Edit Product' }) %>
+
+    <div class="container mt-4">
+        <div class="text-center"><h2>Update Product</h2></div>
+        <br>
+        <div class="mx-auto" style="max-width:600px">
+          <% if (product) { %>
+            <!-- This view posts to the same update route the app uses: /updateProduct/:id -->
+            <form action="/updateProduct/<%= product.id %>" method="POST" enctype="multipart/form-data">
+                <div class="mb-3">
+                  <label class="form-label">Product Name</label>
+                  <input type="text" id="name" name="name" class="form-control" value="<%= product.productName %>" required>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Quantity</label>
+                  <input type="number" id="quantity" name="quantity" class="form-control" min="0" step="1" value="<%= product.quantity %>" required>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Price</label>
+                  <input type="number" id="price" name="price" class="form-control" min="0" step="0.01" value="<%= product.price %>" required>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Category</label>
+                  <select name="category" id="category" class="form-select">
+                    <option value="">-- Select category --</option>
+                    <% (typeof categories !== 'undefined' ? categories : []).forEach(function(c){ %>
+                      <option value="<%= c %>" <% if ((product.category || '') === c) { %> selected <% } %>><%= c %></option>
+                    <% }) %>
+                  </select>
+                  <small class="form-text text-muted">Or enter a new category below:</small>
+                  <input type="text" name="newCategory" class="form-control mt-2" placeholder="New category (e.g. Fruits)">
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Current Image</label>
+                  <input type="text" name="currentImage" class="form-control" value="<%= product.image %>" readonly>
+                  <img src="/images/<%= product.image %>" width="120" class="img-thumbnail mt-2">
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Upload New Image</label>
+                  <input type="file" id="image" name="image" class="form-control" accept="image/*">
+                </div>
+
+                <div class="d-grid gap-2">
+                  <button type="submit" class="btn btn-primary">Update Product</button>
+                  <a class="btn btn-secondary" href="/inventory">Back</a>
+                </div>
+            </form>
+          <% } else { %>
+              <p>No product found.</p>
+          <% } %>
+        </div>
+    </div>
+
+<%- include('partials/footer') %>

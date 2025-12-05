@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700;800&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <title><%= title || 'Maison Verde' %></title>
+</head>
+<body>
+  <nav class="navbar navbar-expand-sm navbar-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="/">Maison Verde</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#collapsibleNavbar">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="collapsibleNavbar">
+        <ul class="navbar-nav ms-auto">
+          <% /* Hide Shop link for admins; show to guests and regular users */ %>
+            <% if (!(typeof user !== 'undefined' && user && user.role === 'admin')) { %>
+              <li class="nav-item"><a class="nav-link" href="/shopping">Shop</a></li>
+            <% } %>
+          <% if (typeof user !== 'undefined' && user) { %>
+            <% /* Show Cart + My Orders only for non-admin users */ %>
+            <% if (!(typeof user !== 'undefined' && user && user.role === 'admin')) { %>
+              <li class="nav-item">
+                <a class="nav-link d-flex align-items-center" href="/cart">Cart
+                  <span id="cartBadge" class="badge bg-danger ms-2" style="font-size:0.75rem;"> <%= typeof cartCount !== 'undefined' ? cartCount : 0 %> </span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link d-flex align-items-center" href="/notifications">Notifications
+                  <% if (typeof notificationCount !== 'undefined' && notificationCount > 0) { %>
+                    <span class="badge bg-warning text-dark ms-2" style="font-size:0.75rem;"><%= notificationCount %></span>
+                  <% } %>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/orders">My Orders</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/help-center">Help Center</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/profile">My Profile</a>
+              </li>
+            <% } %>
+            <% /* Admins get Orders + Sales + Categories + Inventory links */ %>
+            <% if (typeof user !== 'undefined' && user && user.role === 'admin') { %>
+              <li class="nav-item">
+                <a class="nav-link" href="/admin/orders">Orders
+                  <% if (typeof newOrdersCount !== 'undefined' && newOrdersCount > 0) { %>
+                    <span class="badge bg-warning text-dark ms-1" style="font-size:0.75rem;"><%= newOrdersCount %></span>
+                  <% } %>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link d-flex align-items-center" href="/notifications">Notifications
+                  <% if (typeof notificationCount !== 'undefined' && notificationCount > 0) { %>
+                    <span class="badge bg-warning text-dark ms-2" style="font-size:0.75rem;"><%= notificationCount %></span>
+                  <% } %>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/admin/sales">Sales</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/admin/categories">Categories</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/admin/help-center">Help Center</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/inventory">Inventory</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/admin/users">User Management</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/admin/profile">My Admin Profile</a>
+              </li>
+            <% } %>
+            <li class="nav-item"><a class="nav-link" href="/logout">Logout</a></li>
+          <% } else { %>
+            <li class="nav-item"><a class="nav-link" href="/register">Register</a></li>
+            <li class="nav-item"><a class="nav-link" href="/login">Login</a></li>
+          <% } %>
+        </ul>
+      </div>
+    </div>
+  </nav>
+  <script>
+    // If this page was restored from the back-forward cache, force a reload so
+    // the server can re-check authentication and redirect to /login when needed.
+    window.addEventListener('pageshow', function(event) {
+      try {
+        const perf = (window.performance && window.performance.getEntriesByType) ? window.performance.getEntriesByType('navigation') : [];
+        const navType = (perf && perf[0] && perf[0].type) || (performance && performance.navigation && performance.navigation.type) || '';
+        if (event.persisted || navType === 'back_forward' || navType === 2) {
+          // reload the page to ensure server-side auth checks run
+          window.location.reload();
+        }
+      } catch (e) {
+        // best-effort only
+        try { window.location.reload(); } catch(e){}
+      }
+    });
+  </script>

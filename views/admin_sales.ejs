@@ -1,0 +1,165 @@
+<%- include('partials/header', { user: (typeof user !== 'undefined' ? user : null), title: 'Sales Dashboard' }) %>
+
+<div class="container mt-4 mb-5 sales-wrapper">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <h2 class="mb-1">Sales dashboard</h2>
+      <p class="text-muted small mb-0">Track your paid orders and revenue over time.</p>
+    </div>
+    <div class="badge bg-light border text-muted small">
+      <span class="me-1">💹</span> Overview for
+      <strong>
+        <% if (mode === 'this-month') { %>
+          this month
+        <% } else if (mode === 'last-month') { %>
+          last month
+        <% } else if (mode === 'ytd') { %>
+          year to date
+        <% } else if (mode === 'this-year') { %>
+          this year
+        <% } else if (mode === 'custom' && selectedMonth) { %>
+          <%= selectedMonth %>
+        <% } else { %>
+          all time
+        <% } %>
+      </strong>
+    </div>
+  </div>
+
+  <form class="row g-3 align-items-end mb-4" method="GET" action="/admin/sales">
+    <div class="col-sm-4 col-md-3">
+      <label for="mode" class="form-label small fw-semibold">Period</label>
+      <select id="mode" name="mode" class="form-select">
+        <option value="all" <%= (mode === 'all' ? 'selected' : '') %>>All time</option>
+        <option value="this-month" <%= (mode === 'this-month' ? 'selected' : '') %>>This month</option>
+        <option value="last-month" <%= (mode === 'last-month' ? 'selected' : '') %>>Last month</option>
+        <option value="ytd" <%= (mode === 'ytd' ? 'selected' : '') %>>Year to date (YTD)</option>
+        <option value="this-year" <%= (mode === 'this-year' ? 'selected' : '') %>>This year</option>
+        <option value="custom" <%= (mode === 'custom' ? 'selected' : '') %>>Custom month</option>
+      </select>
+    </div>
+    <div class="col-sm-4 col-md-3">
+      <label for="month" class="form-label small fw-semibold">Custom month</label>
+      <select id="month" name="month" class="form-select">
+        <option value="">Choose month</option>
+        <option value="01" <%= (selectedMonth && selectedMonth.endsWith('-01') ? 'selected' : '') %>>January</option>
+        <option value="02" <%= (selectedMonth && selectedMonth.endsWith('-02') ? 'selected' : '') %>>February</option>
+        <option value="03" <%= (selectedMonth && selectedMonth.endsWith('-03') ? 'selected' : '') %>>March</option>
+        <option value="04" <%= (selectedMonth && selectedMonth.endsWith('-04') ? 'selected' : '') %>>April</option>
+        <option value="05" <%= (selectedMonth && selectedMonth.endsWith('-05') ? 'selected' : '') %>>May</option>
+        <option value="06" <%= (selectedMonth && selectedMonth.endsWith('-06') ? 'selected' : '') %>>June</option>
+        <option value="07" <%= (selectedMonth && selectedMonth.endsWith('-07') ? 'selected' : '') %>>July</option>
+        <option value="08" <%= (selectedMonth && selectedMonth.endsWith('-08') ? 'selected' : '') %>>August</option>
+        <option value="09" <%= (selectedMonth && selectedMonth.endsWith('-09') ? 'selected' : '') %>>September</option>
+        <option value="10" <%= (selectedMonth && selectedMonth.endsWith('-10') ? 'selected' : '') %>>October</option>
+        <option value="11" <%= (selectedMonth && selectedMonth.endsWith('-11') ? 'selected' : '') %>>November</option>
+        <option value="12" <%= (selectedMonth && selectedMonth.endsWith('-12') ? 'selected' : '') %>>December</option>
+      </select>
+      <div class="form-text small">Used only when "Custom month" is selected.</div>
+    </div>
+    <div class="col-sm-4 col-md-2 d-flex align-items-end">
+      <button class="btn btn-primary w-100" type="submit">Apply</button>
+    </div>
+  </form>
+
+  <div class="row mb-4 g-3">
+    <div class="col-md-4 col-sm-6">
+      <div class="card border-0 shadow-sm sales-card-primary">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <h6 class="text-uppercase small mb-0">Total revenue</h6>
+            <span class="sales-pill revenue">Paid</span>
+          </div>
+          <% const totalRevenue = (selectedSummary ? selectedSummary.totalRevenue : (monthlySummary || []).reduce((s,m)=>s+m.totalRevenue,0)); %>
+          <h3 class="mb-0">$<%= totalRevenue.toFixed(2) %></h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 col-sm-6">
+      <div class="card border-0 shadow-sm sales-card-neutral">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <h6 class="text-uppercase small mb-0">Paid orders</h6>
+            <span class="sales-pill orders">Count</span>
+          </div>
+          <% const totalOrders = (selectedSummary ? selectedSummary.orderCount : (monthlySummary || []).reduce((s,m)=>s+m.orderCount,0)); %>
+          <h3 class="mb-0"><%= totalOrders %></h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h5 class="mt-4 mb-2">Monthly breakdown</h5>
+  <div class="table-responsive mb-4">
+    <table class="table table-sm table-striped align-middle">
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th class="text-end">Revenue ($)</th>
+          <th class="text-end">Orders</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if ((monthlySummary || []).length === 0) { %>
+          <tr><td colspan="3" class="text-center text-muted">No paid orders yet.</td></tr>
+        <% } else { %>
+          <% monthlySummary.forEach(function(m){ %>
+            <tr>
+              <td><%= m.key %></td>
+              <td class="text-end"><%= m.totalRevenue.toFixed(2) %></td>
+              <td class="text-end"><%= m.orderCount %></td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <h5 class="mt-4 mb-2">Orders
+    <% if (mode === 'this-month') { %>
+      (This month)
+    <% } else if (mode === 'last-month') { %>
+      (Last month)
+    <% } else if (mode === 'ytd') { %>
+      (Year to date)
+    <% } else if (mode === 'this-year') { %>
+      (This year)
+    <% } else if (mode === 'custom' && selectedMonth) { %>
+      in <%= selectedMonth %>
+    <% } %>
+  </h5>
+  <div class="table-responsive mb-5">
+    <table class="table table-sm table-hover align-middle">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>User</th>
+          <th>Date</th>
+          <th class="text-end">Total ($)</th>
+          <th>Status</th>
+          <th>Delivery</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!orders || orders.length === 0) { %>
+          <tr><td colspan="6" class="text-center text-muted">No paid orders for this period.</td></tr>
+        <% } else { %>
+          <% orders.forEach(function(o){ %>
+            <tr>
+              <td>#<%= o.id %></td>
+              <td><%= o.username || o.userName || ('User ' + (o.userId || '')) %></td>
+              <td><%= new Date(o.createdAt).toLocaleString('en-SG', { dateStyle:'short', timeStyle:'short' }) %></td>
+              <td class="text-end">$
+                <%= Number(o.subtotal || o.total || 0).toFixed(2) %>
+              </td>
+              <td><span class="badge bg-success">Paid</span></td>
+              <td><%= (o.deliveryStatus || 'processing').charAt(0).toUpperCase() + (o.deliveryStatus || 'processing').slice(1) %></td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,94 @@
+<%- include('partials/header', { user: user, title: 'Admin - Users' }) %>
+
+<div class="container mt-4 mb-5 admin-users-wrapper">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h2 class="mb-1">User management</h2>
+      <p class="text-muted small mb-0">View all registered accounts and remove users when necessary.</p>
+    </div>
+    <div class="ms-auto" style="max-width:260px;">
+      <input id="adminUserSearch" type="text" class="form-control form-control-sm" placeholder="Search by name or email...">
+    </div>
+  </div>
+
+  <% if (errors && errors.length) { %>
+    <div class="alert alert-danger">
+      <% errors.forEach(function(msg){ %>
+        <div><%= msg %></div>
+      <% }) %>
+    </div>
+  <% } %>
+  <% if (success && success.length) { %>
+    <div class="alert alert-success">
+      <% success.forEach(function(msg){ %>
+        <div><%= msg %></div>
+      <% }) %>
+    </div>
+  <% } %>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>ID</th>
+              <th>User</th>
+              <th>Email</th>
+              <th class="d-none d-md-table-cell">Address</th>
+              <th class="d-none d-md-table-cell">Contact</th>
+              <th>Role</th>
+              <th class="text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="adminUsersTableBody">
+            <% if (users && users.length) { %>
+              <% users.forEach(function(u){ %>
+                <tr>
+                  <td><span class="badge bg-light text-secondary border">#<%= u.id %></span></td>
+                  <td><%= u.username || '-' %></td>
+                  <td><%= u.email %></td>
+                  <td class="d-none d-md-table-cell"><%= u.address || '-' %></td>
+                  <td class="d-none d-md-table-cell"><%= u.contact || '-' %></td>
+                  <td>
+                    <span class="badge <%= u.role === 'admin' ? 'bg-danger-subtle text-danger border' : 'bg-success-subtle text-success border' %>">
+                      <%= u.role %>
+                    </span>
+                  </td>
+                  <td class="text-center">
+                    <form method="post" action="/admin/users/<%= u.id %>/delete" onsubmit="return confirm('Are you sure you want to delete this user?');" class="d-inline">
+                      <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }) %>
+            <% } else { %>
+              <tr>
+                <td colspan="7" class="text-center text-muted py-4">No users found.</td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>
+<script>
+  (function(){
+    const searchInput = document.getElementById('adminUserSearch');
+    const tbody = document.getElementById('adminUsersTableBody');
+    if (!searchInput || !tbody) return;
+
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    function applyFilter(){
+      const q = (searchInput.value || '').toLowerCase().trim();
+      rows.forEach(function(row){
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(q) ? '' : 'none';
+      });
+    }
+    searchInput.addEventListener('input', applyFilter);
+  })();
+</script>

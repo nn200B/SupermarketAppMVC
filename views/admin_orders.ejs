@@ -1,0 +1,100 @@
+<%- include('partials/header', { user: (typeof user !== 'undefined' ? user : null), title: 'Admin Orders' }) %>
+
+<div class="container mt-4 mb-5">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h2 class="mb-1">All Orders</h2>
+      <p class="text-muted mb-0">Monitor customer orders, statuses, and recent activity.</p>
+    </div>
+    <% if (orders && orders.length) { %>
+      <span class="badge bg-primary">
+        <%= orders.length %> order<%= orders.length === 1 ? '' : 's' %>
+      </span>
+    <% } %>
+  </div>
+
+  <% if (typeof success !== 'undefined' && success && success.length) { %>
+    <div class="alert alert-success"><%= success.join('<br>') %></div>
+  <% } %>
+  <% if (typeof errors !== 'undefined' && errors && errors.length) { %>
+    <div class="alert alert-danger"><%= errors.join('<br>') %></div>
+  <% } %>
+
+  <% if (!orders || orders.length === 0) { %>
+    <div class="card shadow-sm">
+      <div class="card-body text-center py-5">
+        <h5 class="mb-2">No orders yet.</h5>
+        <p class="text-muted mb-0">Orders will appear here as customers complete checkout.</p>
+      </div>
+    </div>
+  <% } else { %>
+    <div class="card shadow-sm">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Order</th>
+                <th scope="col">User ID</th>
+                <th scope="col">Total</th>
+                <th scope="col">Placed</th>
+                <th scope="col">Delivery Status</th>
+                <th scope="col">New</th>
+                <th scope="col" class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% orders.forEach(function(o){ %>
+                <% const status = (o.deliveryStatus || o.status || 'processing').toLowerCase(); %>
+                <% let badgeClass = 'bg-secondary'; %>
+                <% if (status.includes('processing') || status.includes('packed')) { badgeClass = 'bg-info text-dark'; } %>
+                <% if (status.includes('shipped')) { badgeClass = 'bg-warning text-dark'; } %>
+                <% if (status.includes('delivered')) { badgeClass = 'bg-success'; } %>
+                <tr class="<%= o.new ? 'table-warning' : '' %>">
+                  <td>
+                    <a href="/orders/<%= o.id %>" class="fw-semibold text-decoration-none">
+                      #<%= o.id %>
+                    </a>
+                  </td>
+                  <td><%= o.userId %></td>
+                  <td>$<%= Number(o.total || (o.subtotal + o.deliveryCost)).toFixed(2) %></td>
+                  <td><small class="text-muted"><%= new Date(o.createdAt).toLocaleString('en-SG',{dateStyle:'medium', timeStyle:'short'}) %></small></td>
+                  <td>
+                    <span class="badge <%= badgeClass %>">
+                      <%= o.deliveryStatus || o.status || 'processing' %>
+                    </span>
+                  </td>
+                  <td>
+                    <% if (o.new) { %>
+                      <span class="badge bg-primary">New</span>
+                    <% } else { %>
+                      <span class="badge bg-secondary">Seen</span>
+                    <% } %>
+                  </td>
+                  <td class="text-end">
+                    <div class="btn-group" role="group">
+                      <form method="post" action="/admin/orders/<%= o.id %>/status">
+                        <input type="hidden" name="status" value="packed" />
+                        <button class="btn btn-sm btn-outline-primary" type="submit">Packed</button>
+                      </form>
+                      <form method="post" action="/admin/orders/<%= o.id %>/status">
+                        <input type="hidden" name="status" value="shipped" />
+                        <button class="btn btn-sm btn-outline-secondary" type="submit">Shipped</button>
+                      </form>
+                      <form method="post" action="/admin/orders/<%= o.id %>/status">
+                        <input type="hidden" name="status" value="delivered" />
+                        <button class="btn btn-sm btn-outline-success" type="submit">Delivered</button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,62 @@
+<%- include('partials/header', { user: user, title: 'Admin Profile' }) %>
+
+<div class="container mt-4 mb-5 profile-wrapper">
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body d-flex flex-column">
+          <h5 class="mb-3">Admin account</h5>
+          <p class="mb-1 fw-semibold"><%= profile.username %></p>
+          <p class="mb-1 small text-muted"><%= profile.email %></p>
+          <span class="badge bg-dark mt-2">Administrator</span>
+          <div class="mt-auto small text-muted pt-3 border-top">Use this page to keep your admin contact details up to date.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+          <h5 class="mb-3">Update admin details</h5>
+
+          <% if (errors && errors.length) { %>
+            <div class="alert alert-danger">
+              <% errors.forEach(function(e){ %>
+                <div><%= e %></div>
+              <% }) %>
+            </div>
+          <% } %>
+          <% if (success && success.length) { %>
+            <div class="alert alert-success">
+              <% success.forEach(function(m){ %>
+                <div><%= m %></div>
+              <% }) %>
+            </div>
+          <% } %>
+
+          <form action="/admin/profile" method="POST">
+            <div class="mb-3">
+              <label class="form-label">Name</label>
+              <input type="text" name="username" class="form-control" required value="<%= profile.username || '' %>">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Email</label>
+              <input type="email" name="email" class="form-control" required value="<%= profile.email || '' %>">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Address</label>
+              <input type="text" name="address" class="form-control" value="<%= profile.address || '' %>">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Contact</label>
+              <input type="text" name="contact" class="form-control" value="<%= profile.contact || '' %>">
+            </div>
+            <button type="submit" class="btn btn-primary">Save changes</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

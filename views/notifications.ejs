@@ -1,0 +1,128 @@
+<%- include('partials/header', { user: (typeof user !== 'undefined' ? user : null), title: 'Notifications' }) %>
+
+<div class="container mt-4 mb-5">
+  <div class="row mb-3">
+    <div class="col-md-8">
+      <h2 class="mb-1">Notifications</h2>
+      <p class="text-muted mb-0">All your order updates, refunds and requests in one place.</p>
+    </div>
+    <div class="col-md-4 text-md-end mt-2 mt-md-0">
+      <span class="badge bg-primary">
+        <%= (notifications || []).filter(function(n){ return !n.read; }).length %> Unread
+      </span>
+    </div>
+  </div>
+
+  <!-- Search and filter bar inside a card -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <!-- Tabs: All / Unread / Read -->
+      <ul class="nav nav-pills mb-3">
+        <li class="nav-item">
+          <a class="nav-link <%= (!tab || tab === 'all') ? 'active' : '' %>" href="/notifications?<%= 'tab=all' + (q ? '&q=' + encodeURIComponent(q) : '') + (type ? '&type=' + encodeURIComponent(type) : '') %>">All</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <%= tab === 'unread' ? 'active' : '' %>" href="/notifications?<%= 'tab=unread' + (q ? '&q=' + encodeURIComponent(q) : '') + (type ? '&type=' + encodeURIComponent(type) : '') %>">Unread</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <%= tab === 'read' ? 'active' : '' %>" href="/notifications?<%= 'tab=read' + (q ? '&q=' + encodeURIComponent(q) : '') + (type ? '&type=' + encodeURIComponent(type) : '') %>">Read</a>
+        </li>
+      </ul>
+
+      <form method="get" action="/notifications" class="row g-2 align-items-center">
+        <input type="hidden" name="tab" value="<%= tab || 'all' %>">
+        <div class="col-md-5">
+          <input type="text" name="q" value="<%= (typeof q !== 'undefined' ? q : '') %>" class="form-control" placeholder="Search notifications...">
+        </div>
+        <div class="col-md-4">
+          <select name="type" class="form-select">
+            <option value="">All categories</option>
+            <option value="order" <%= type === 'order' ? 'selected' : '' %>>Order</option>
+            <option value="order-status" <%= type === 'order-status' ? 'selected' : '' %>>Order Status</option>
+            <option value="refund" <%= type === 'refund' ? 'selected' : '' %>>Refund</option>
+            <option value="address" <%= type === 'address' ? 'selected' : '' %>>Address Change</option>
+            <option value="help" <%= type === 'help' ? 'selected' : '' %>>Help Centre</option>
+            <option value="info" <%= type === 'info' ? 'selected' : '' %>>Others</option>
+          </select>
+        </div>
+        <div class="col-md-3 d-flex justify-content-end gap-2">
+          <button type="submit" class="btn btn-outline-secondary">Filter</button>
+        </div>
+      </form>
+
+      <form method="post" action="/notifications/mark-all-read" class="mt-2 d-flex justify-content-end">
+        <input type="hidden" name="tab" value="<%= tab || 'all' %>">
+        <input type="hidden" name="q" value="<%= (typeof q !== 'undefined' ? q : '') %>">
+        <input type="hidden" name="type" value="<%= type || '' %>">
+        <button type="submit" class="btn btn-primary btn-sm">Mark all as read</button>
+      </form>
+    </div>
+  </div>
+
+  <% if (typeof errors !== 'undefined' && errors.length) { %>
+    <div class="alert alert-danger">
+      <ul class="mb-0">
+        <% errors.forEach(function(e){ %>
+          <li><%= e %></li>
+        <% }) %>
+      </ul>
+    </div>
+  <% } %>
+  <% if (typeof success !== 'undefined' && success.length) { %>
+    <div class="alert alert-success">
+      <ul class="mb-0">
+        <% success.forEach(function(m){ %>
+          <li><%= m %></li>
+        <% }) %>
+      </ul>
+    </div>
+  <% } %>
+
+  <div class="card shadow-sm">
+    <div class="card-body p-0">
+      <div class="list-group list-group-flush">
+        <% if (!notifications || !notifications.length) { %>
+          <div class="list-group-item text-muted text-center py-4">No notifications yet.</div>
+        <% } else { %>
+          <% notifications.forEach(function(n){ %>
+            <div class="list-group-item d-flex justify-content-between align-items-start <%= !n.read ? 'bg-light' : 'bg-white' %>">
+              <a href="<%= n.link || '#' %>?notif=<%= n.id %>" class="text-decoration-none flex-grow-1 me-3 text-reset">
+                <div class="me-auto">
+                  <div class="d-flex align-items-center mb-1">
+                    <% if (n.type === 'order' || n.type === 'order-status') { %>
+                      <span class="badge bg-success me-2">Order</span>
+                    <% } else if (n.type === 'refund') { %>
+                      <span class="badge bg-warning text-dark me-2">Refund</span>
+                    <% } else if (n.type === 'address') { %>
+                      <span class="badge bg-info text-dark me-2">Address</span>
+                    <% } else if (n.type === 'help') { %>
+                      <span class="badge bg-secondary me-2">Help</span>
+                    <% } else { %>
+                      <span class="badge bg-light text-dark border me-2">Info</span>
+                    <% } %>
+                    <strong><%= n.message %></strong>
+                  </div>
+                  <small class="text-muted"><%= new Date(n.createdAt).toLocaleString('en-SG',{dateStyle:'short', timeStyle:'short'}) %></small>
+                </div>
+              </a>
+              <div class="d-flex flex-column align-items-end">
+                <% if (!n.read) { %>
+                  <span class="badge bg-primary rounded-pill mb-2">New</span>
+                <% } else { %>
+                  <span class="badge bg-secondary rounded-pill mb-2">Read</span>
+                <% } %>
+                <form method="post" action="/notifications/<%= n.id %>/read">
+                  <button type="submit" class="btn btn-sm btn-outline-success">
+                    ✓ Mark read
+                  </button>
+                </form>
+              </div>
+            </div>
+          <% }) %>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,230 @@
+<%- include('partials/header', { user: (typeof user !== 'undefined' ? user : null), title: 'Shopping' }) %>
+
+  <div class="container my-5">
+    <div class="hero-lite p-4 rounded-3 mb-4" style="background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.95));">
+      <% // ensure there is always a visible set of categories for the UI. If DB returned none, use sensible defaults. %>
+      <% const renderCategories = (typeof categories !== 'undefined' && Array.isArray(categories) && categories.length) ? categories : ['Fruits','Vegetables','Dairy','Bakery']; %>
+      <div class="d-flex align-items-center justify-content-between flex-wrap">
+        <div class="mb-3">
+          <h2 class="mb-1">Shop Fresh at Supermarket</h2>
+          <p class="text-muted small mb-0">Browse categories, search items and add to cart quickly.</p>
+        </div>
+        <div class="search-controls d-flex align-items-center">
+          <input id="searchBox" class="form-control me-2" placeholder="Search items by name..." style="min-width:320px">
+          <label for="filterCategory" class="visually-hidden">Category</label>
+          <select id="filterCategory" class="form-select d-inline-block w-auto me-2">
+            <option value="">All</option>
+            <% renderCategories.forEach(function(c){ %>
+              <option value="<%= c %>" <%= (typeof category !== 'undefined' && category === c) ? 'selected' : '' %>><%= c %></option>
+            <% }) %>
+          </select>
+          <button id="clearSearch" class="btn btn-outline-secondary">Clear</button>
+        </div>
+      </div>
+
+      <!-- category chips -->
+      <div class="mt-3 overflow-auto py-2" style="white-space:nowrap;">
+        <% renderCategories.forEach(function(c){ %>
+          <button class="btn btn-sm btn-light me-2 category-chip" data-cat="<%= c %>"><%= c %></button>
+        <% }) %>
+      </div>
+      
+        <!-- Toast container for add-to-cart feedback and errors -->
+        <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080;">
+          <div id="addCartToast" class="toast align-items-center text-bg-success" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+              <div class="toast-body" id="addCartToastBody">Added to cart</div>
+              <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+          </div>
+        </div>
+    </div>
+
+    <div id="productsGrid" class="row g-4">
+      <% for(let i=0; i < products.length; i++) { const p = products[i]; const stock = Number(p.quantity) || 0; const outOfStock = stock <= 0; %>
+        <div class="col-6 col-md-4 col-lg-3">
+          <div class="card product-card h-100 shadow-sm">
+            <a href="/product/<%= p.id %>">
+              <img src="/images/<%= p.image %>" class="card-img-top" alt="<%= p.productName %>">
+            </a>
+            <div class="card-body d-flex flex-column">
+              <h5 class="card-title mb-1"><%= p.productName %></h5>
+              <p class="text-muted small mb-2">Stock: <strong><%= stock %></strong></p>
+              <div class="mt-auto d-flex align-items-center justify-content-between">
+                <div class="price">$<%= (Number(p.price) || 0).toFixed(2) %></div>
+                <div class="d-flex align-items-center">
+                  <a href="/product/<%= p.id %>" class="btn btn-outline-primary btn-sm me-2">View</a>
+                  <% if (outOfStock) { %>
+                    <span class="badge bg-secondary">Out of stock</span>
+                  <% } else { %>
+                    <form action="/add-to-cart/<%= p.id %>" method="POST" class="d-flex align-items-center m-0">
+                      <select name="quantity" class="form-select form-select-sm me-2" style="width:72px">
+                        <% const maxSelectable = Math.min(stock, 5); for (let q = 1; q <= maxSelectable; q++) { %>
+                          <option value="<%= q %>"><%= q %></option>
+                        <% } %>
+                      </select>
+                      <button type="submit" class="btn btn-success btn-sm">Add</button>
+                    </form>
+                  <% } %>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+    
+
+  <script>
+    // Progressive enhancement: intercept add-to-cart forms, try AJAX first
+    document.addEventListener('DOMContentLoaded', function(){
+      const toastEl = document.getElementById('addCartToast');
+      const bsToast = (window.bootstrap && toastEl) ? new bootstrap.Toast(toastEl) : null;
+      function showToast(msg){
+        if (!toastEl) return;
+        document.getElementById('addCartToastBody').innerHTML = msg;
+        if (bsToast) bsToast.show();
+      }
+
+      function pulseBadge(){
+        const badge = document.getElementById('cartBadge');
+        if (!badge) return;
+        badge.classList.add('cart-badge-pulse');
+        setTimeout(() => badge.classList.remove('cart-badge-pulse'), 520);
+      }
+
+      document.querySelectorAll('form[action^="/add-to-cart/"]').forEach(function(form){
+        form.addEventListener('submit', function(e){
+          // progressive: also send an AJAX request for analytics/UX, but do NOT
+          // prevent the default form submission so the browser navigates to
+          // the cart page as before.
+          const url = form.action;
+          const fd = new FormData(form);
+          // UI: loading state on button
+          const submitBtn = form.querySelector('button[type="submit"]');
+          let spinner = null;
+          if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.classList.add('btn-loading');
+            spinner = document.createElement('span');
+            spinner.className = 'spinner-border spinner-border-sm text-white me-1';
+            spinner.setAttribute('role','status');
+            spinner.setAttribute('aria-hidden','true');
+            submitBtn.prepend(spinner);
+          }
+          // inline added indicator (create if missing)
+          let indicator = form.querySelector('.added-indicator');
+          if (!indicator) {
+            indicator = document.createElement('span');
+            indicator.className = 'added-indicator';
+            indicator.innerHTML = 'Added ✓';
+            form.appendChild(indicator);
+          }
+          fetch(url, { method: 'POST', body: fd, headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+            .then(function(res){
+              if (res.status === 401) {
+                // not authenticated — show toast with login link
+                showToast('Please <a href="/login" class="text-white fw-bold">log in</a> to add items to cart');
+                return null;
+              }
+              const ctype = (res.headers.get && res.headers.get('content-type')) || '';
+              if (!ctype.includes('application/json')) {
+                // server returned unexpected non-JSON response
+                console.error('Unexpected non-JSON response from /add-to-cart');
+                showToast('Failed to add to cart');
+                return null;
+              }
+              return res.json();
+            })
+            .then(function(data){
+              if (!data) return;
+              if (data && data.success) {
+                // update badge if present
+                const badge = document.getElementById('cartBadge');
+                if (badge) {
+                  const qty = (data.cartQuantity !== undefined) ? data.cartQuantity : (data.cartLength || 0);
+                  badge.textContent = qty;
+                }
+                pulseBadge();
+                // show inline indicator briefly
+                indicator.classList.add('show');
+                setTimeout(() => indicator.classList.remove('show'), 1600);
+                showToast('Item added to cart');
+              } else {
+                console.warn('AJAX add-to-cart response indicated failure', data);
+                const msg = (data && data.error) ? data.error : 'Failed to add to cart';
+                showToast(msg);
+              }
+            })
+            .catch(function(err){
+              console.error('Add to cart fetch failed', err);
+              showToast('Network error — failed to add to cart');
+            }).finally(function(){
+              if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('btn-loading');
+                if (spinner && spinner.parentNode) spinner.remove();
+              }
+            });
+        });
+      });
+    });
+    // category filter — submits page with category query param
+    document.getElementById('filterCategory').addEventListener('change', function(){
+      var v = this.value || '';
+      // treat empty or explicit 'All' as no filter
+      if (!v || (typeof v === 'string' && v.toLowerCase() === 'all')) {
+        window.location.href = '/shopping';
+        return;
+      }
+      window.location.href = '/shopping?category=' + encodeURIComponent(v);
+    });
+
+    // category chip clicks set select and submit; mark active chip
+    // determine selected category from the select element (avoids embedding server-side strings into JS)
+    const selectedCategory = (document.getElementById('filterCategory') && document.getElementById('filterCategory').value) || '';
+    document.querySelectorAll('.category-chip').forEach(function(btn){
+      // set active state on load
+      if (selectedCategory && btn.dataset.cat === selectedCategory) btn.classList.add('active');
+      btn.addEventListener('click', function(){
+        var cat = this.dataset.cat;
+        // toggle: if clicking the already-selected category, clear filter
+        if (cat && cat === selectedCategory) {
+          window.location.href = '/shopping';
+          return;
+        }
+        var url = '/shopping';
+        if (cat) url += '?category=' + encodeURIComponent(cat);
+        window.location.href = url;
+      });
+    });
+
+    // simple client-side search (filters visible cards)
+    (function(){
+      const search = document.getElementById('searchBox');
+      const grid = document.getElementById('productsGrid');
+      const items = Array.from(grid.querySelectorAll('.product-card'));
+      function doFilter(){
+        const q = (search.value || '').toLowerCase().trim();
+        items.forEach(function(card){
+          const title = (card.querySelector('.card-title') && card.querySelector('.card-title').textContent) || '';
+          card.closest('.col-6, .col-md-4, .col-lg-3').style.display = title.toLowerCase().includes(q) ? '' : 'none';
+        });
+      }
+      search.addEventListener('input', doFilter);
+      document.getElementById('clearSearch').addEventListener('click', function(){
+        // clear search and category filter (reload clean shopping page)
+        search.value = '';
+        doFilter();
+        window.location.href = '/shopping';
+      });
+    })();
+
+    // Note: we intentionally do not intercept add-to-cart forms here so that
+    // they behave as normal POSTs and work reliably with server-side session
+    // authentication. This avoids issues where cookies are not sent on fetch
+    // requests in some environments.
+  </script>
+<%- include('partials/footer') %>

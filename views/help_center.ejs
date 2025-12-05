@@ -1,0 +1,151 @@
+<%- include('partials/header', { user: (typeof user !== 'undefined' ? user : null), title: 'Help Center' }) %>
+
+<div class="container mt-4 mb-5">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex align-items-center">
+      <div class="me-3">
+        <span class="badge rounded-circle bg-primary d-inline-flex align-items-center justify-content-center" style="width:40px;height:40px;">
+          <i class="bi bi-chat-dots"></i>
+        </span>
+      </div>
+      <div>
+        <h2 class="mb-1">Help Center</h2>
+        <p class="text-muted mb-0">Manage your orders: change address or request a refund.</p>
+      </div>
+    </div>
+    <a href="/orders" class="btn btn-outline-primary btn-sm">View my orders</a>
+  </div>
+
+  <% if (typeof errors !== 'undefined' && errors.length) { %>
+    <div class="alert alert-danger">
+      <ul class="mb-0">
+        <% errors.forEach(function(e){ %>
+          <li><%= e %></li>
+        <% }) %>
+      </ul>
+    </div>
+  <% } %>
+  <% if (typeof success !== 'undefined' && success.length) { %>
+    <div class="alert alert-success">
+      <ul class="mb-0">
+        <% success.forEach(function(m){ %>
+          <li><%= m %></li>
+        <% }) %>
+      </ul>
+    </div>
+  <% } %>
+
+  <div class="row g-4">
+    <div class="col-md-6">
+      <div class="card shadow-sm h-100 border-0">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-2">
+            <span class="badge bg-info text-dark me-2"><i class="bi bi-geo-alt"></i></span>
+            <h5 class="card-title mb-0">Request delivery address change</h5>
+          </div>
+          <p class="text-muted small mb-3">Available only for orders that are packed but not yet shipped.</p>
+          <form action="/help-center/address-change" method="POST">
+            <div class="mb-3">
+              <label class="form-label">Order</label>
+              <select name="orderId" class="form-select" required>
+                <option value="">Select order</option>
+                <% (eligibleAddressOrders || []).forEach(function(o){ %>
+                  <option value="<%= o.id %>">#<%= o.id %> - <%= new Date(o.createdAt).toLocaleString('en-SG',{dateStyle:'short'}) %> - $<%= Number(o.total || o.subtotal || 0).toFixed(2) %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">New delivery address</label>
+              <textarea name="newAddress" class="form-control" rows="3" placeholder="Include street, unit and postal code" required></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Reason (optional)</label>
+              <textarea name="reason" class="form-control" rows="2" placeholder="Tell us why you need to change the address"></textarea>
+            </div>
+            <div class="d-flex justify-content-end">
+              <button type="submit" class="btn btn-primary">Submit address change request</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card shadow-sm h-100 border-0">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-2">
+            <span class="badge bg-danger me-2"><i class="bi bi-credit-card"></i></span>
+            <h5 class="card-title mb-0">Request a refund / cancel order</h5>
+          </div>
+          <p class="text-muted small mb-3">Choose an order to cancel and request a refund.</p>
+          <form id="refundForm" action="/help-center/refund" method="POST">
+            <div class="mb-3">
+              <label class="form-label">Order</label>
+              <select name="orderId" class="form-select" required>
+                <option value="">Select order</option>
+                <% (refundableOrders || []).forEach(function(o){ %>
+                  <option value="<%= o.id %>">#<%= o.id %> - <%= new Date(o.createdAt).toLocaleString('en-SG',{dateStyle:'short'}) %> - $<%= Number(o.total || o.subtotal || 0).toFixed(2) %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Reason for refund</label>
+              <textarea name="reason" class="form-control" rows="3" placeholder="Briefly explain why you want a refund" required></textarea>
+            </div>
+            <div class="mb-3 form-check">
+              <input type="checkbox" class="form-check-input" id="confirmCancel" required>
+              <label class="form-check-label" for="confirmCancel">I understand this will cancel my order and start a refund process.</label>
+            </div>
+            <div class="d-flex justify-content-end">
+              <button type="button" id="refundConfirmBtn" class="btn btn-danger">Request refund</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Refund confirmation modal -->
+<div class="modal fade" id="refundConfirmModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm cancellation and refund</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to cancel this order and request a refund? This action cannot be undone once processed by our team.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Keep my order</button>
+        <button type="button" id="confirmRefundSubmit" class="btn btn-danger">Yes, cancel and refund</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function(){
+    var refundBtn = document.getElementById('refundConfirmBtn');
+    var confirmSubmit = document.getElementById('confirmRefundSubmit');
+    var refundForm = document.getElementById('refundForm');
+    var modalEl = document.getElementById('refundConfirmModal');
+    var bsModal = modalEl ? new bootstrap.Modal(modalEl) : null;
+
+    if (refundBtn && bsModal && refundForm) {
+      refundBtn.addEventListener('click', function(){
+        if (!refundForm.checkValidity()) {
+          refundForm.reportValidity();
+          return;
+        }
+        bsModal.show();
+      });
+      confirmSubmit.addEventListener('click', function(){
+        refundForm.submit();
+      });
+    }
+  });
+</script>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,38 @@
+<%- include('partials/header', { user: (typeof user !== 'undefined' ? user : null), title: 'Delivery Details' }) %>
+
+<div class="container mt-4">
+  <h2>Delivery Details</h2>
+
+  <% var errors = (typeof errors !== 'undefined' && Array.isArray(errors)) ? errors : []; %>
+  <% if (errors.length) { %>
+    <div class="alert alert-danger"><%= errors.join('<br>') %></div>
+  <% } %>
+
+  <form method="post" action="/delivery-details">
+    <div class="mb-3">
+      <label class="form-label">Full name</label>
+      <input name="fullName" class="form-control" required />
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Street address</label>
+      <input name="street" class="form-control" required />
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Unit number</label>
+      <input name="unit" class="form-control" />
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Postal code</label>
+      <input name="postalCode" class="form-control" required />
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Delivery note (optional)</label>
+      <textarea name="note" class="form-control" rows="3"></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Continue to payment</button>
+    <a href="/cart" class="btn btn-secondary ms-2">Back to cart</a>
+  </form>
+</div>
+
+<%- include('partials/footer') %>

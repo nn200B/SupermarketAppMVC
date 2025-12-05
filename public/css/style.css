@@ -1,0 +1,414 @@
+/* Theme & typography variables */
+:root{
+  --brand-green:#1f8a3e;
+  --brand-green-dark:#176731;
+  --accent:#ffdd57;
+  --muted:#f6f7f6;
+  --glass: rgba(255,255,255,0.08);
+}
+
+/* Base typography */
+body{font-family: 'Poppins', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;background:var(--muted);margin:0}
+
+/* Navbar */
+.navbar{
+  background: linear-gradient(90deg,var(--brand-green-dark), var(--brand-green)) !important;
+  border: none;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.10);
+  position: sticky;
+  top: 0;
+  z-index: 1040;
+  padding-top: 14px; /* increase navbar height */
+  padding-bottom: 14px;
+}
+
+/* Auth (login/register) pages */
+.auth-wrapper {
+  min-height: calc(100vh - 70px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  background:
+    linear-gradient(rgba(15, 23, 42, 0.60), rgba(15, 23, 42, 0.60)),
+    url('https://www.bankrate.com/2020/08/01170557/How-to-save-money-on-groceries.jpeg')
+      center/cover no-repeat fixed;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 880px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 0;
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
+  overflow: hidden;
+}
+
+.auth-card .auth-illustration {
+  background: linear-gradient(145deg, #1e7f5a, #26a96c);
+  color: #f9fafb;
+  padding: 3rem 2.5rem;
+  align-items: center;
+}
+
+.auth-card .auth-illustration .brand-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.auth-card .auth-illustration .brand-subtitle {
+  font-size: 0.95rem;
+  opacity: 0.92;
+  margin-bottom: 1.5rem;
+}
+
+.auth-highlights {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.auth-highlights li {
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.auth-form {
+  padding: 2.25rem 2rem;
+  background: #f9fafb;
+}
+
+.auth-heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.auth-text {
+  font-size: 0.95rem;
+  color: #6b7280;
+}
+
+.auth-footer-text {
+  font-size: 0.9rem;
+}
+
+.auth-footer-text a {
+  font-weight: 600;
+  color: #1e7f5a;
+}
+
+@media (max-width: 767.98px) {
+  .auth-card {
+    max-width: 480px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .auth-card .auth-illustration {
+    display: none !important;
+  }
+
+  .auth-form {
+    padding: 2rem 1.5rem;
+  }
+}
+.navbar .navbar-brand, .navbar .nav-link{ color: rgba(255,255,255,0.95) !important; font-weight:700 }
+.navbar .navbar-brand{ font-size:1.25rem; padding-right:12px }
+.navbar .nav-link{ font-size:1rem; padding:10px 12px }
+.navbar .nav-link:hover{ color: #fff !important; opacity:0.95 }
+
+/* Make icon buttons and their badge slightly larger and visually balanced */
+.navbar .nav-item .nav-link svg{ width:22px; height:22px }
+.navbar .nav-item .badge{ transform:translate(40%, -40%); font-size:0.7rem; padding:.25rem .45rem }
+
+/* Cart badge pulse animation when items are added */
+.cart-badge-pulse{
+  animation: pulseBadge 520ms ease forwards;
+}
+@keyframes pulseBadge{
+  0%{ transform: scale(1); }
+  50%{ transform: scale(1.35); }
+  100%{ transform: scale(1); }
+}
+
+/* Inline added indicator on product card */
+.added-indicator{
+  display:inline-block; margin-left:8px; color:var(--brand-green-dark); font-weight:700; opacity:0; transform:translateY(6px); transition: transform 260ms ease, opacity 260ms ease;
+}
+.added-indicator.show{ opacity:1; transform:translateY(0); }
+
+.btn-loading{ position:relative }
+.btn-loading .spinner-border{ width:1rem; height:1rem; border-width:0.12rem }
+
+/* Hero section */
+.hero{
+  /* Prefer a local hero image, fall back to external Unsplash image, and keep a gradient overlay */
+  /* slightly stronger overlay so text contrasts better while photo stays visible */
+  /* increased tint opacity per user request */
+  background-image: linear-gradient(90deg, rgba(31,138,62,0.28), rgba(23,103,49,0.28)), url('/images/hero-person.jpg'), url('https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=1471&auto=format&fit=crop&ixlib=rb-4.0.3&s=3b9f68efdb7a709c0f7d8b1f1cf8b2d9');
+  background-size: cover, cover, cover;
+  background-position: center, center, center;
+  background-repeat: no-repeat, no-repeat, no-repeat;
+  color: #fff;
+  padding: 48px 0;
+  min-height: calc(100vh - 56px); /* fill the viewport below the navbar */
+  display: flex;
+  align-items: center;
+}
+.hero .left{padding:30px}
+.hero h1{font-size:48px;line-height:1.03;margin-bottom:0.6rem;font-weight:800;letter-spacing:-0.5px}
+.hero p.lead{font-size:18px;opacity:0.95;max-width:640px}
+.hero .cta-row{margin-top:18px}
+.btn-cta{background:var(--accent);color:#1b1b1b;border-radius:30px;padding:12px 26px;font-weight:800;border:none;box-shadow:0 8px 18px rgba(0,0,0,0.12)}
+.btn-outline-light-custom{border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:30px;padding:8px 18px;background:transparent}
+.hero .right{display:flex;align-items:center;justify-content:center;position:relative}
+
+/* Hero image: occupy half the viewport width on larger screens, no border, subtle gradient overlay */
+.hero .hero-image{
+  width:50vw;
+  max-width:720px;
+  height:auto;
+  border-radius:0; /* remove border */
+  box-shadow:none; /* remove shadow */
+  background: transparent;
+  padding:0;
+  display:block;
+}
+
+/* New photo container (replaces SVG placeholder). Shows a friendly placeholder when missing.
+   When a file exists at /public/images/hero-person.jpg the IMG will fire onload and the background will be set. */
+.hero-photo{
+  width:50vw;
+  max-width:720px;
+  height:420px;
+  border-radius:0;
+  overflow:hidden;
+  position:relative;
+  background-size:cover;
+  background-position:center;
+  background-repeat:no-repeat;
+}
+.hero-photo{width:50vw;max-width:720px;height:420px;border-radius:0;overflow:hidden;position:relative;background-size:cover;background-position:center;background-repeat:no-repeat}
+
+/* gradient overlay on the right column */
+.hero .right::before{
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  pointer-events: none;
+  /* strengthen right-column tint slightly for better legibility */
+  /* increased opacity to match overall stronger green tint */
+  background: linear-gradient(90deg, rgba(31,138,62,0.28) 0%, rgba(23,103,49,0.28) 100%);
+  mix-blend-mode: multiply;
+}
+
+/* Enter animation for hero left content */
+.hero .left{transform: translateY(12px); opacity:0; transition: transform 520ms cubic-bezier(.2,.9,.2,1), opacity 520ms ease}
+.hero.enter .left{transform: translateY(0); opacity:1}
+
+.download-badges img{filter:brightness(1.05);border-radius:8px}
+
+.search-controls{display:flex;align-items:center;gap:10px}
+.search-controls select, .search-controls input{border-radius:30px;padding:10px 16px;border:0}
+.search-controls .form-select{min-width:140px;padding-right:38px;background-repeat:no-repeat;background-position:right 12px center}
+.search-controls .form-select::-ms-expand{display:none}
+.search-controls .form-select{appearance:none;-webkit-appearance:none}
+.badge-features{display:flex;gap:12px;margin-top:18px}
+.search-controls .form-select{border:1px solid #e9ecef;background-color:#fff}
+.search-controls .form-select:focus{box-shadow:0 4px 12px rgba(0,0,0,0.06);outline:none}
+.search-controls .form-select{background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 20 20'><path fill='%23666' d='M5 7l5 5 5-5z'/></svg>");}
+.badge-features .badge{background:var(--glass);padding:8px 12px;border-radius:999px;font-weight:600;font-size:13px}
+
+/* small helpers */
+.container .lead-cta{margin-top:8px;color:rgba(255,255,255,0.9)}
+
+@media (max-width:992px){
+  .hero{padding:36px 0}
+  .hero h1{font-size:34px}
+  .hero .right{margin-top:20px}
+  .hero .hero-image{max-width:360px;width:100%}
+}
+@media (max-width:576px){
+  .hero{padding:28px 0}
+  .hero h1{font-size:26px}
+  .hero .left{padding:12px}
+  .hero .hero-image{display:none}
+}
+
+/* Shopping page styles */
+.hero-lite{
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0.98)),
+    url('https://t3.ftcdn.net/jpg/03/35/74/56/360_F_335745675_MaxYxSsadrviZdThITuHB2oCohYOiwEu.jpg')
+      center/cover no-repeat;
+}
+.product-card{border-radius:12px;overflow:hidden}
+.product-card .card-body{padding:16px}
+.product-card .price{font-weight:800;color:var(--brand-green-dark);font-size:1.05rem}
+.category-chip{border-radius:999px;border:1px solid #eee;padding:6px 14px;font-weight:600}
+.search-controls input{box-shadow:0 6px 18px rgba(0,0,0,0.06);border:1px solid #e9ecef}
+.search-controls .form-select{border:1px solid #e9ecef}
+
+/* Reduce zoom on product images and provide nicer framing */
+.product-card img.card-img-top{height:120px;object-fit:contain;background:#fff;padding:12px;border-bottom:1px solid #f3f3f3}
+.product-card .card-body{min-height:140px}
+.category-chip.active{background:var(--brand-green);color:#fff;border-color:var(--brand-green-dark)}
+
+/* Order detail page */
+.order-detail-wrapper{
+  max-width: 1120px;
+}
+
+.order-progress{
+  display:flex;
+  align-items:flex-start;
+  gap:18px;
+  margin-top:8px;
+}
+
+.order-progress-step{
+  position:relative;
+  flex:1;
+  text-align:center;
+  font-size:0.7rem;
+  color:#9ca3af;
+}
+
+.order-progress-step::before{
+  content:"";
+  position:absolute;
+  top:10px;
+  left:0;
+  right:0;
+  height:3px;
+  background:#e5e7eb;
+  z-index:0;
+}
+
+.order-progress-step .dot{
+  position:relative;
+  width:16px;
+  height:16px;
+  margin:0 auto 4px;
+  border-radius:50%;
+  border:2px solid #e5e7eb;
+  background:#fff;
+  z-index:1;
+}
+
+.order-progress-step.is-current .dot,
+.order-progress-step.is-complete .dot{
+  border-color:var(--brand-green);
+  background:var(--brand-green);
+}
+
+.order-progress-step.is-current .label,
+.order-progress-step.is-complete .label{
+  color:#111827;
+  font-weight:600;
+}
+
+@media (max-width:768px){
+  .search-controls input{min-width:160px}
+}
+
+/* Inventory (admin) page */
+.inventory-wrapper{
+
+/* Inventory (admin) page */
+.inventory-wrapper{
+  max-width: 1120px;
+}
+
+.inventory-pill{
+  border-radius: 999px;
+  border: 1px solid rgba(148,163,184,0.25);
+  background: linear-gradient(135deg,#eff6ff,#f9fafb);
+  font-size: 0.9rem;
+}
+
+.inventory-table th{
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+}
+
+.inventory-table td{
+  font-size: 0.95rem;
+}
+
+.inventory-image-thumb{
+  width: 70px;
+  height: 70px;
+  object-fit: contain;
+  background:#ffffff;
+  padding:6px;
+  border-radius:10px;
+  border:1px solid #e5e7eb;
+}
+
+.inventory-qty-chip{
+  background-color: rgba(22,163,74,0.08);
+  color: #15803d;
+  font-weight: 600;
+  padding: .35rem .9rem;
+}
+
+@media (max-width: 767.98px){
+  .inventory-wrapper{padding-left: 0.75rem; padding-right: 0.75rem;}
+}
+
+/* Admin users page */
+.admin-users-wrapper{
+  max-width: 1120px;
+}
+
+/* Profile page */
+.profile-wrapper{
+  max-width: 1120px;
+}
+
+/* Sales dashboard */
+.sales-wrapper{
+  max-width: 1120px;
+}
+
+.sales-card-primary{
+  background: linear-gradient(135deg,#22c55e,#16a34a);
+  color:#f9fafb;
+}
+
+.sales-card-primary h3{font-weight:800;letter-spacing:0.03em}
+.sales-card-primary h6{opacity:0.9}
+
+.sales-card-neutral{
+  background:#ffffff;
+}
+
+.sales-pill{
+  border-radius:999px;
+  padding:.15rem .7rem;
+  font-size:0.7rem;
+  text-transform:uppercase;
+  letter-spacing:0.06em;
+}
+
+.sales-pill.revenue{
+  background:rgba(22,163,74,0.16);
+  color:#f9fafb;
+  border:1px solid rgba(209,250,229,0.6);
+}
+
+.sales-pill.orders{
+  background:#eff6ff;
+  color:#1d4ed8;
+  border:1px solid #dbeafe;
+}
+}
