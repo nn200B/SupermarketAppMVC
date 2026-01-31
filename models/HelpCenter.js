@@ -20,6 +20,7 @@ function addRefundRequest(data, cb) {
     username: data.username,
     orderId: data.orderId,
     reason: data.reason,
+    paymentMethod: data.paymentMethod || 'card',
     status: 'pending',
     createdAt: new Date().toISOString()
   };

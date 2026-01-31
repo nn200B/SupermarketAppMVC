@@ -45,6 +45,7 @@ function listUserOrders(getUserIdFromSessionUser) {
 function userOrderDetail(getUserIdFromSessionUser) {
     return (req, res) => {
         const id = req.params.id;
+        const isPublic = String(req.query.public || '') === '1';
         const uid = getUserIdFromSessionUser(req.session.user);
         Order.getOrderById(id, (err, o) => {
             if (err) {
@@ -52,7 +53,7 @@ function userOrderDetail(getUserIdFromSessionUser) {
                 return res.status(500).send('Server error');
             }
             if (!o) return res.status(404).send('Order not found');
-            if (String(o.userId) !== String(uid) && !(req.session.user && req.session.user.role === 'admin')) {
+            if (!isPublic && String(o.userId) !== String(uid) && !(req.session.user && req.session.user.role === 'admin')) {
                 return res.status(403).send('Access denied');
             }
             o.estimatedDelivery = estimateDeliveryDate(o.createdAt, o.deliveryOption);

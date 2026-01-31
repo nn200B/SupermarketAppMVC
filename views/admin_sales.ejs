@@ -115,6 +115,32 @@
     </table>
   </div>
 
+  <h5 class="mt-4 mb-2">Payment method breakdown</h5>
+  <div class="table-responsive mb-4">
+    <table class="table table-sm table-striped align-middle">
+      <thead>
+        <tr>
+          <th>Method</th>
+          <th class="text-end">Orders</th>
+          <th class="text-end">Revenue ($)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!paymentSummary || !paymentSummary.length) { %>
+          <tr><td colspan="3" class="text-center text-muted">No paid orders yet.</td></tr>
+        <% } else { %>
+          <% paymentSummary.forEach(function(m){ %>
+            <tr>
+              <td class="text-capitalize"><%= m.method %></td>
+              <td class="text-end"><%= m.count %></td>
+              <td class="text-end"><%= Number(m.total || 0).toFixed(2) %></td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
   <h5 class="mt-4 mb-2">Orders
     <% if (mode === 'this-month') { %>
       (This month)

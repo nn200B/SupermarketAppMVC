@@ -91,6 +91,8 @@
                   <div class="d-flex align-items-center mb-1">
                     <% if (n.type === 'order' || n.type === 'order-status') { %>
                       <span class="badge bg-success me-2">Order</span>
+                    <% } else if (n.type === 'payment') { %>
+                      <span class="badge bg-primary me-2">Payment</span>
                     <% } else if (n.type === 'refund') { %>
                       <span class="badge bg-warning text-dark me-2">Refund</span>
                     <% } else if (n.type === 'address') { %>

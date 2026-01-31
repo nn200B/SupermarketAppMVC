@@ -1,5 +1,6 @@
 const express = require('express');
 const mysql = require('mysql2');
+require('dotenv').config();
 const session = require('express-session');
 const flash = require('connect-flash');
 const multer = require('multer');
@@ -40,7 +41,7 @@ let connection = mysql.createConnection({
 });
 // If SKIP_DB is enabled we will later overwrite connection with a safe stub to avoid accidental DB calls crashing the app.
 
-// Keep SKIP_DB flag for products/carts, but orders will ignore it and use JSON store
+// Keep SKIP_DB flag for products/carts; orders use DB when available and fallback to JSON when SKIP_DB=true
 const SKIP_DB = String(process.env.SKIP_DB || '').toLowerCase() === 'true';
 if (!SKIP_DB) {
     connection.connect((err) => {
@@ -70,6 +71,22 @@ if (!SKIP_DB) {
             connection.query(createCategoriesTable, (err) => {
                 if (err) console.error('Failed to ensure categories table:', err);
             });
+            // Ensure payment logs table exists
+            const createPaymentLogsTable = `
+                CREATE TABLE IF NOT EXISTS payment_logs (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    orderId INT NOT NULL,
+                    gateway VARCHAR(30) NOT NULL,
+                    eventType VARCHAR(30) NOT NULL,
+                    status VARCHAR(30) NOT NULL,
+                    details TEXT,
+                    createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    KEY idx_payment_logs_orderId (orderId)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            `;
+            connection.query(createPaymentLogsTable, (err) => {
+                if (err) console.error('Failed to ensure payment_logs table:', err);
+            });
     });
 } else {
     console.log('SKIP_DB=true -> skipping MySQL connection and using in-memory storage');
@@ -96,11 +113,17 @@ const inMemory = {
     nextOrderId: 1,
     notifications: [],
     nextNotificationId: 1,
+    paymentLogs: [],
+    nextPaymentLogId: 1,
     refundRequests: [],
     nextRefundId: 1,
     addressChangeRequests: [],
     nextAddressChangeId: 1
 };
+
+// Expose store for route helpers (payment receipt notifications)
+global.__appStore = inMemory;
+global.__persistStore = persistStore;
 
 // JSON-backed dev store (persist in SKIP_DB mode)
 const STORE_DIR = path.join(__dirname, 'data');
@@ -399,15 +422,16 @@ function getProductById(id, cb) {
 
 // Set up view engine
 app.set('view engine', 'ejs');
+// enable form and JSON body parsing for all routes
+app.use(express.urlencoded({ extended: true })); // for HTML forms
+app.use(express.json({
+  verify: (req, res, buf) => {
+    // needed for HitPay webhook signature validation
+    req.rawBody = buf;
+  }
+})); // for fetch/JSON (PayPal)
 //  enable static files
 app.use(express.static('public'));
-// enable form processing
-app.use(express.urlencoded({
-    extended: false
-}));
-
-// make sure JSON body parsing is enabled for future endpoints
-app.use(express.json());
 
 //TO DO: Insert code for Session Middleware below 
 app.use(session({
@@ -418,7 +442,38 @@ app.use(session({
     cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 } 
 }));
 
+// PayPal API routes
+app.use('/paypal', require('./routes/paypal'));
+// HitPay API routes
+app.use('/hitpay', require('./routes/hitpay'));
+// Stripe API routes
+app.use('/stripe', require('./routes/stripe'));
+
 app.use(flash());
+
+// Security: prevent caching of sensitive/payment routes
+app.use((req, res, next) => {
+    const noStorePaths = [
+        '/checkout',
+        '/delivery-details',
+        '/payment-processing',
+        '/payment-success',
+        '/order-success',
+        '/pay/qr',
+        '/stripe/success',
+        '/paypal/return',
+        '/paypal/cancel',
+        '/hitpay/return'
+    ];
+    const hit = noStorePaths.some(p => req.path === p || req.path.startsWith(p + '/'));
+    if (hit) {
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.set('Pragma', 'no-cache');
+        res.set('Expires', '0');
+        res.set('Surrogate-Control', 'no-store');
+    }
+    next();
+});
 
 // Quick test-login route (always available) placed early so it's reachable even if other routing changes happen.
 app.get('/_quick_login', (req, res) => {
@@ -489,6 +544,18 @@ const checkAuthenticated = (req, res, next) => {
         req.flash('error', 'Please log in to view this resource');
         return res.redirect('/login');
     }
+};
+
+// Middleware to allow public access when ?public=1 is present
+const checkAuthenticatedOrPublic = (req, res, next) => {
+    if (req.session && req.session.user) return next();
+    if (String(req.query.public || '') === '1') return next();
+    const acceptsJson = req.xhr || (req.get('Accept') || '').includes('application/json') || req.get('content-type') === 'application/json';
+    if (acceptsJson) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    req.flash('error', 'Please log in to view this resource');
+    return res.redirect('/login');
 };
 
 // Middleware to check if user is admin
@@ -747,7 +814,7 @@ app.get('/shopping', checkAuthenticated, checkNotAdmin, (req, res) => {
 // Allow guests to add to cart (no login required). Admins are still blocked.
 app.post('/add-to-cart/:id', checkNotAdmin, (req, res) => {
     const productId = parseInt(req.params.id);
-    const quantity = parseInt(req.body.quantity) || 1;
+    const quantity = parseInt(req.body && req.body.quantity) || 1;
 
     // Debug logging to help trace AJAX failures
     try {
@@ -1444,7 +1511,9 @@ app.post('/notifications/:id/read', checkAuthenticated, (req, res) => {
 
 // Admin sales analytics page: view revenue & orders by month (paid orders only)
 app.get('/admin/sales', checkAuthenticated, checkAdmin, (req, res) => {
-    const allOrders = (inMemory.orders || []).filter(o => (o.status || '').toLowerCase() === 'paid');
+    OrderModel.getAllOrders((err, all) => {
+        if (err) console.error('Failed to load orders for sales:', err);
+        const allOrders = (all || []).filter(o => (o.status || '').toLowerCase() === 'paid');
 
     // Group by YYYY-MM
     const monthlyMap = {};
@@ -1538,13 +1607,33 @@ app.get('/admin/sales', checkAuthenticated, checkAdmin, (req, res) => {
         selectedKey = customKey;
     } // else mode === 'all' => keep allOrders and no selectedSummary
 
-    res.render('admin_sales', {
-        user: req.session.user,
-        monthlySummary,
-        orders: filteredOrders,
-        selectedMonth: selectedKey,
-        selectedSummary,
-        mode
+        // Payment method breakdown
+        const methodMap = {};
+        allOrders.forEach(o => {
+            const key = String(o.paymentMethod || 'card').toLowerCase();
+            if (!methodMap[key]) methodMap[key] = { method: key, count: 0, total: 0 };
+            methodMap[key].count += 1;
+            methodMap[key].total += Number(o.total || (o.subtotal + o.deliveryCost) || 0);
+        });
+        const paymentSummary = Object.values(methodMap).sort((a, b) => b.total - a.total);
+
+        res.render('admin_sales', {
+            user: req.session.user,
+            monthlySummary,
+            orders: filteredOrders,
+            selectedMonth: selectedKey,
+            selectedSummary,
+            mode,
+            paymentSummary
+        });
+    });
+});
+
+// Admin payment audit log
+app.get('/admin/payments/logs', checkAuthenticated, checkAdmin, (req, res) => {
+    OrderModel.getPaymentLogs((err, logs) => {
+        if (err) console.error('Failed to load payment logs:', err);
+        res.render('admin_payment_logs', { user: req.session.user, logs: logs || [] });
     });
 });
 
@@ -1729,7 +1818,7 @@ app.get('/checkout', checkAuthenticated, checkNotAdmin, (req, res) => {
     const subtotal = cart.reduce((s, it) => s + (Number(it.price || 0) * Number(it.quantity || 0)), 0);
     const errors = req.flash('error');
     const success = req.flash('success');
-    res.render('checkout', { cart, subtotal, user: req.session.user, errors, success, delivery: req.session.delivery });
+    res.render('checkout', { cart, subtotal, user: req.session.user, errors, success, delivery: req.session.delivery, PAYPAL_CLIENT_ID: process.env.PAYPAL_CLIENT_ID });
 });
 
 // POST checkout -> choose delivery & payment
@@ -1762,14 +1851,19 @@ app.post('/checkout', checkAuthenticated, checkNotAdmin, (req, res) => {
 
         const total = Number(subtotal) + Number(deliveryCost);
 
+        if (paymentMethod !== 'qr') {
+            req.flash('error', 'Please use PayNow, PayPal, or Stripe buttons to complete payment.');
+            return res.redirect('/checkout');
+        }
+
         const orderBase = {
-                userId: getUserIdFromSessionUser(req.session.user),
-                items: cart.slice(),
-                subtotal,
-                deliveryOption: deliveryOption || 'normal',
-                deliveryCost,
-                total,
-            paymentMethod: paymentMethod || 'card',
+            userId: getUserIdFromSessionUser(req.session.user),
+            items: cart.slice(),
+            subtotal,
+            deliveryOption: deliveryOption || 'normal',
+            deliveryCost,
+            total,
+            paymentMethod: 'qr',
             delivery: req.session.delivery || null
         };
 
@@ -1785,127 +1879,115 @@ app.post('/checkout', checkAuthenticated, checkNotAdmin, (req, res) => {
                                 req.flash('error', 'Could not create order. Please try again.');
                                 return res.redirect('/checkout');
                         }
+                    OrderModel.logPaymentEvent(created.id, 'paynow_qr', 'payment_initiated', 'pending', null);
                         req.session.recentOrderId = created.id;
                         return res.redirect('/pay/qr/' + encodeURIComponent(created.id));
                 });
                 return;
         }
 
-        // Card branch (default) - always proceed and then redirect
-        const cardNumber = (req.body.cardNumber || '').replace(/\s+/g, '');
-        const cvv = (req.body.cvv || '').replace(/\s+/g, '');
-        const holder = (req.body.cardHolder || '').trim();
-
-        const toCreate = Object.assign({}, orderBase, {
-            status: 'paid',
-            paymentDetails: {
-                method: 'card',
-                holder,
-                last4: cardNumber.slice(-4),
-                cvv
-            },
-            deliveryStatus: 'processing'
-        });
-
-        addOrder(toCreate, (err, created) => {
-            if (err || !created || !created.id) {
-                console.error('Order create warning (card):', err);
-                req.flash('error', 'Order was created with warnings.');
-                return res.redirect('/orders');
-            }
-
-            // Deduct stock from products for each item in the paid order
-            try {
-                (created.items || []).forEach(item => {
-                    const pid = item.productId || item.id;
-                    const qty = Number(item.quantity) || 0;
-                    if (!pid || qty <= 0) return;
-                    const sql = 'UPDATE products SET quantity = GREATEST(quantity - ?, 0) WHERE id = ?';
-                    connection.query(sql, [qty, pid], (e) => {
-                        if (e) console.error('Failed to deduct stock for product', pid, e);
-                    });
-                });
-            } catch (e) {
-                console.error('Error during stock deduction:', e);
-            }
-
-            // clear selected items and/or cart and save
-            if (Array.isArray(req.session.selectedCartItems) && req.session.selectedCartItems.length) {
-                const selectedIds = new Set(req.session.selectedCartItems.map(it => String(it.productId)));
-                req.session.cart = (req.session.cart || []).filter(it => !selectedIds.has(String(it.productId)));
-                req.session.selectedCartItems = [];
-            } else {
-                req.session.cart = [];
-            }
-            const uid = getUserIdFromSessionUser(req.session.user);
-            if (uid) saveCartToDB(uid, req.session.cart, () => {});
-
-            // Notifications for new paid order
-            try {
-                addNotification({
-                    role: 'admin',
-                    type: 'order',
-                    message: `New paid order #${created.id} from ${req.session.user.username}.`,
-                    link: '/admin/orders'
-                });
-                addNotification({
-                    role: 'user',
-                    userId: uid,
-                    type: 'order',
-                    message: `Your order #${created.id} has been placed successfully.`,
-                    link: '/orders/' + encodeURIComponent(created.id)
-                });
-            } catch (e) {
-                console.error('Failed to create notifications for new order:', e);
-            }
-
-            req.session.lastOrderId = created.id;
-            req.flash('success', 'Payment successful. Order placed.');
-            return res.redirect('/payment-processing');
-        });
 });
 
 // Payment processing + success redirect
-app.get('/payment-processing', checkAuthenticated, checkNotAdmin, (req, res) => {
+app.get('/payment-processing', (req, res) => {
     if (!req.session.lastOrderId) {
         return res.redirect('/orders');
     }
     res.render('payment_processing', { user: req.session.user });
 });
 
-app.get('/payment-success', checkAuthenticated, checkNotAdmin, (req, res) => {
+app.get('/payment-success', (req, res) => {
     const id = req.session.lastOrderId;
     if (!id) return res.redirect('/orders');
     req.session.lastOrderId = null; // prevent revisiting payment-processing after success
-    return res.redirect('/orders/' + encodeURIComponent(id));
+    return res.redirect('/orders/' + encodeURIComponent(id) + '?public=1');
+});
+
+// Order success page (works even if session is missing after third-party redirect)
+app.get('/order-success', (req, res) => {
+    const orderId = String(req.query.orderId || req.session?.lastOrderId || '').trim();
+    const user = req.session?.user || null;
+
+    if (req.session) req.session.lastOrderId = null;
+    if (!orderId) {
+        return res.render('order_success', { user: user || null, orderId: null, order: null });
+    }
+
+    OrderModel.getOrderById(orderId, (err, order) => {
+        if (err || !order) {
+            return res.render('order_success', { user, orderId, order: null });
+        }
+        return res.render('order_success', { user, orderId, order });
+    });
+});
+
+// Public order summary (no login) for post-payment redirects
+app.get('/order-summary', (req, res) => {
+    const orderId = String(req.query.orderId || '').trim();
+    if (!orderId) return res.redirect('/order-success');
+    OrderModel.getOrderById(orderId, (err, order) => {
+        if (err || !order) return res.redirect('/order-success');
+        return res.render('order_detail', { order, user: null });
+    });
+});
+
+// Public invoice view (no login) for post-payment redirects
+app.get('/invoice', (req, res) => {
+    const orderId = String(req.query.orderId || '').trim();
+    if (!orderId) return res.redirect('/order-success');
+    OrderModel.getOrderById(orderId, (err, order) => {
+        if (err || !order) return res.redirect('/order-success');
+        return res.render('invoice', { order, user: null });
+    });
 });
 
 // QR payment page (shows QR and allows simulating confirmation)
 app.get('/pay/qr/:id', checkAuthenticated, checkNotAdmin, (req, res) => {
     const id = req.params.id;
-    const o = (inMemory.orders || []).find(x => String(x.id) === String(id));
-    if (!o) return res.status(404).send('Order not found');
-    res.render('pay_qr', { order: o, user: req.session.user });
+    OrderModel.getOrderById(id, (err, o) => {
+        if (err || !o) return res.status(404).send('Order not found');
+        res.render('pay_qr', { order: o, user: req.session.user });
+    });
 });
 
 // Confirm QR payment (simulate the callback from payment app)
-app.post('/pay/qr/:id/confirm', checkAuthenticated, checkNotAdmin, (req, res) => {
+app.post('/pay/qr/:id/confirm', (req, res) => {
     const id = req.params.id;
-    // mark order as paid
-    const o = (inMemory.orders || []).find(x => String(x.id) === String(id));
-    if (!o) return res.status(404).send('Order not found');
-    o.status = 'paid';
-    if (!o.history) o.history = [];
-    o.history.push({ status: 'paid', at: new Date().toISOString() });
-    // update delivery estimate
-    o.estimatedDelivery = estimateDeliveryDate(o.createdAt, o.deliveryOption);
-    o.new = true;
-    persistStore(() => {
-        // clear cart
-        req.session.cart = [];
-        const uid = getUserIdFromSessionUser(req.session.user);
-        if (uid) saveCartToDB(uid, req.session.cart, () => {});
-        return res.redirect('/orders/' + encodeURIComponent(o.id));
+    OrderModel.getOrderById(id, (err, o) => {
+        if (err || !o) return res.status(404).send('Order not found');
+        if (String(o.status || '').toLowerCase() === 'paid') {
+            return res.redirect('/orders/' + encodeURIComponent(id) + '?public=1');
+        }
+        OrderModel.markOrderPaid(id, 'paynow_qr', null, null, (err2) => {
+            if (err2) {
+                console.error('Failed to mark QR order paid:', err2);
+                return res.status(500).send('Failed to update order');
+            }
+            OrderModel.deductStockForOrder(o, (deductErr) => {
+                if (deductErr) console.error('Failed to deduct stock (QR):', deductErr);
+
+                try {
+                    addNotification({
+                        role: 'user',
+                        userId: o.userId,
+                        type: 'payment',
+                        message: `Receipt: Payment received for order #${o.id}.`,
+                        link: '/orders/' + encodeURIComponent(o.id) + '/invoice'
+                    });
+                } catch (e) {
+                    console.error('Failed to create receipt notification (QR):', e);
+                }
+
+                // clear cart
+                if (req.session) {
+                    req.session.cart = [];
+                    const uid = getUserIdFromSessionUser(req.session.user);
+                    if (uid) saveCartToDB(uid, req.session.cart, () => {});
+                    req.session.lastOrderId = id;
+                }
+                return res.redirect('/orders/' + encodeURIComponent(id) + '?public=1');
+            });
+        });
     });
 });
 
@@ -1923,18 +2005,11 @@ app.post('/help-center/refund', checkAuthenticated, checkNotAdmin,
 app.get('/orders', checkAuthenticated, OrderController.listUserOrders(getUserIdFromSessionUser));
 
 // User: printable invoice for a specific order (must come before generic /orders/:id)
-app.get('/orders/:id/invoice', checkAuthenticated, checkNotAdmin, (req, res) => {
+app.get('/orders/:id/invoice', checkAuthenticatedOrPublic, (req, res) => {
     const id = req.params.id;
-    const user = req.session.user;
-    const uid = getUserIdFromSessionUser(user);
-    if (!uid) return res.redirect('/login');
-    getOrdersByUser(uid, (err, list) => {
-        if (err || !list) {
-            req.flash('error', 'Unable to load invoice for this order.');
-            return res.redirect('/orders');
-        }
-        const order = list.find(o => String(o.id) === String(id));
-        if (!order) {
+    const user = req.session.user || null;
+    OrderModel.getOrderById(id, (err, order) => {
+        if (err || !order) {
             req.flash('error', 'Order not found.');
             return res.redirect('/orders');
         }
@@ -1943,7 +2018,7 @@ app.get('/orders/:id/invoice', checkAuthenticated, checkNotAdmin, (req, res) => 
 });
 
 // User: order detail (delegates to OrderController)
-app.get('/orders/:id', checkAuthenticated, OrderController.userOrderDetail(getUserIdFromSessionUser));
+app.get('/orders/:id', checkAuthenticatedOrPublic, OrderController.userOrderDetail(getUserIdFromSessionUser));
 
 // Admin: view all orders (delegates to OrderController)
 app.get('/admin/orders', checkAuthenticated, checkAdmin, OrderController.adminListOrders());

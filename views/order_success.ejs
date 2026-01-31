@@ -1,0 +1,55 @@
+<%- include('partials/header', { user: (typeof user !== 'undefined' ? user : null), title: 'Order Successful' }) %>
+
+<div class="container mt-4 mb-5">
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+      <div class="d-flex align-items-center mb-3">
+        <div class="me-3 text-success" style="font-size:2rem;">✔</div>
+        <div>
+          <h2 class="mb-1">Payment successful</h2>
+          <p class="text-muted mb-0">Thank you! Your order has been placed.</p>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="border rounded p-3 bg-light">
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Order ID</span>
+              <span class="fw-semibold">#<%= orderId || 'N/A' %></span>
+            </div>
+            <% if (order) { %>
+              <div class="d-flex justify-content-between mt-2">
+                <span class="text-muted">Total paid</span>
+                <span class="fw-semibold">$<%= Number(order.total || (order.subtotal + order.deliveryCost)).toFixed(2) %></span>
+              </div>
+              <div class="d-flex justify-content-between mt-2">
+                <span class="text-muted">Payment method</span>
+                <span class="fw-semibold text-capitalize"><%= order.paymentMethod || 'card' %></span>
+              </div>
+              <% if (order.estimatedDelivery) { %>
+                <div class="d-flex justify-content-between mt-2">
+                  <span class="text-muted">Estimated delivery</span>
+                  <span class="fw-semibold"><%= new Date(order.estimatedDelivery).toLocaleDateString('en-SG',{dateStyle:'medium'}) %></span>
+                </div>
+              <% } %>
+            <% } %>
+          </div>
+        </div>
+
+        <div class="col-lg-5">
+          <div class="d-grid gap-2">
+            <% if (orderId) { %>
+              <a class="btn btn-primary" href="/order-summary?orderId=<%= encodeURIComponent(orderId) %>">View order</a>
+              <a class="btn btn-outline-primary" href="/invoice?orderId=<%= encodeURIComponent(orderId) %>" target="_blank">View invoice</a>
+            <% } %>
+            <a class="btn btn-outline-secondary" href="/shopping">Continue shopping</a>
+            <a class="btn btn-outline-dark" href="/order-success?orderId=<%= encodeURIComponent(orderId || '') %>">Back to success</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

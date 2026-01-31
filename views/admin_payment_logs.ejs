@@ -1,0 +1,49 @@
+<%- include('partials/header', { user: (typeof user !== 'undefined' ? user : null), title: 'Payment Logs' }) %>
+
+<div class="container mt-4 mb-5">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h2 class="mb-1">Payment audit log</h2>
+      <p class="text-muted mb-0">Track payment events across all gateways.</p>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle mb-0">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Order</th>
+              <th>Gateway</th>
+              <th>Event</th>
+              <th>Status</th>
+              <th>Details</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (!logs || !logs.length) { %>
+              <tr><td colspan="7" class="text-center text-muted py-4">No payment logs yet.</td></tr>
+            <% } else { %>
+              <% logs.forEach(function(l){ %>
+                <tr>
+                  <td>#<%= l.id %></td>
+                  <td>#<%= l.orderId %></td>
+                  <td class="text-capitalize"><%= l.gateway || 'unknown' %></td>
+                  <td><%= l.eventType || 'event' %></td>
+                  <td><%= l.status || 'unknown' %></td>
+                  <td style="max-width:320px;" class="text-muted small"><%= l.details || '-' %></td>
+                  <td class="text-muted small"><%= new Date(l.createdAt).toLocaleString('en-SG',{dateStyle:'short', timeStyle:'short'}) %></td>
+                </tr>
+              <% }) %>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

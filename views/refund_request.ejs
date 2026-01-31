@@ -7,6 +7,7 @@
         <div class="card-body">
           <h4 class="mb-2">Request a refund</h4>
           <p class="text-muted small mb-3">Order #<%= order.id %> placed <%= new Date(order.createdAt).toLocaleString() %></p>
+          <p class="text-muted small mb-3">Payment method: <strong><%= order.paymentMethod || 'card' %></strong></p>
 
           <% if (errors && errors.length) { %>
             <div class="alert alert-danger">

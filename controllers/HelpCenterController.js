@@ -118,7 +118,8 @@ module.exports = {
           userId,
           username: req.session.user.username,
           orderId: order.id,
-          reason
+          reason,
+          paymentMethod: order.paymentMethod || 'card'
         }, (e) => {
           if (e) {
             console.error('Failed to save refund request:', e);
